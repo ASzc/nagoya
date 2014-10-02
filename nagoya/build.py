@@ -50,74 +50,6 @@ def optional_plural(cfg, key):
     else:
         logger.debug("Optional config key {key} does not exist".format(**locals()))
 
-# This would inherit from tempfile.TemporaryDirectory, but Python 2 doesn't have it
-class TempResourceDirectory():
-    """
-    Provides a temporary directory that can be used for:
-        - A docker build context
-        - A host directory mounted as a volume in a container
-    """
-
-    def __init__(self, suffix="", prefix=tempfile.template, dir=None, image_root="/tmp"):
-        self._closed = False
-        self.name = None
-        self.name = tempfile.mkdtemp(suffix, prefix, dir)
-
-        self.basenames_copied = set()
-        self.image_root = image_root
-
-    def __repr__(self):
-        return "<{0} {1!r}>".format(self.__class__.__name__, self.name)
-
-    def __enter__(self):
-        return self
-
-    def cleanup(self):
-        if self.name is not None and not self._closed:
-            shutil.rmtree(self.name)
-            self._closed = True
-
-    def __exit__(self, exc, value, tb):
-        self.cleanup()
-
-    def include(self, source_path, dockerfile=None, executable=False):
-        basename = os.path.basename(source_path)
-        if basename in self.basenames_copied:
-            raise BuildException("Resource collision for basename {basename}".format(**locals()))
-        self.basenames_copied.add(basename)
-
-        temp_path = os.path.join(self.name, basename)
-
-        if os.path.isfile(source_path):
-            logger.debug("Resource {basename} is a file".format(**locals()))
-            shutil.copyfile(source_path, temp_path)
-            if executable:
-                logger.debug("Setting resource {basename} executable".format(**locals()))
-                # equiv. of chmod +x
-                mode = os.stat(temp_path).st_mode
-                os.chmod(temp_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-            else:
-                logger.debug("Resource {basename} is not executable".format(**locals()))
-        elif os.path.isdir(source_path):
-            logger.debug("Resource {basename} is a directory".format(**locals()))
-            shutil.copytree(source_path, temp_path)
-        else:
-            raise BuildException("Resource {source_path} is not file or directory".format(**locals()))
-
-        image_path = os.path.join(self.image_root, basename)
-
-        if dockerfile is not None:
-            logger.debug("Appending ADD instruction to dockerfile for {source_path}".format(**locals()))
-            dockerfile.write("ADD ./")
-            dockerfile.write(basename)
-            dockerfile.write(" ")
-            dockerfile.write(image_path)
-            dockerfile.write("\n")
-
-        logger.debug("Included resource {source_path} for use at {image_path}".format(**locals()))
-
-        return image_path
-
 #
 # Container system image build
 #
@@ -260,91 +192,53 @@ def build_container_system(image_name, image_config, client, quiet):
 # Standard image build
 #
 
+lib_spec_pattern = re.compile(r'^(?P<sourcepath>.+) at (?P<destpath>.+)$')
+run_spec_pattern = re.compile(r'^(?P<sourcepath>.+) in (?P<workdirpath>.+)$')
+
 def build_image(image_name, image_config, client, quiet):
     logger.info("Generating files for {image_name}".format(**locals()))
     with nagoya.docker.build.BuildContext(image_name, image_config["from"], client, quiet) as context:
         context.maintainer(image_config["maintainer"])
+
         for port in optional_plural(image_config, "exposes"):
             context.expose(port)
+
         for volume in optional_plural(image_config, "volumes"):
             context.volume(volume)
 
         for lib_spec in optional_plural(image_config, "libs"):
-            at_dir = TODO # TODO get from config "util at /zxc/wer/" ?? atdir should be required in cfg?
+            match = lib_spec_pattern.match(lib_spec)
+            if match:
+                src_path = match.group("sourcepath")
+                dest_path = match.group("destpath")
 
-            context.include(lib_path, )
+                context.include(lib_path, dest_path)
+            else:
+                raise InvalidFormat("Invalid lib specification '{lib_spec}' for image {image_name}".format(**locals()))
+
+        def parse_run_like(spec, opt_name, context_func):
+            match = run_spec_pattern.match(spec)
+            if match:
+                src_path = match.group("sourcepath")
+                workdir_path = match.group("workdirpath")
+
+                if not workdir_path == previous_workdir:
+                    context.workdir(workdir_path)
+                    previous_workdir = workdir_path
+                basename = os.path.basename(src_path)
+                image_path = os.path.join(workdir_path, basename)
+                context.include(src_path, image_path, executable=True)
+                context_func(image_path)
+            else:
+                raise InvalidFormat("Invalid {0} specification '{1}' for image {2}".format(opt_name, spec, image_name))
 
         previous_workdir = ""
         for run_spec in optional_plural(image_config, "runs"):
-            workdir = TODO # TODO get from config "asd.py in /asdqwe/wer/" ?? Workdir should be required in cfg?
-
-            if not workdir == previous_workdir:
-                context.workdir(workdir)
-                previous_workdir = workdir
-            context.include(TODOsource, TODOimagepath, executable=True)
-            context.run(TODOimagepath)
+            parse_run_like(run_spec, "run", context.run)
 
         if "entrypoint" in image_config:
             entrypoint_spec = image_config["entrypoint"]
-            # TODO
-            context.include(TODOsource, TODOimagepath, executable=True)
-            context.entrypoint(TODOimagepath)
-
-
-    with TempResourceDirectory(image_root="/tmp") as docker_context:
-        build_dir = docker_context.name
-        dockerfile_path = os.path.join(build_dir, "Dockerfile")
-        with open(dockerfile_path, "w") as dockerfile:
-            dockerfile.write("FROM ")
-            dockerfile.write(image_config["from"])
-            dockerfile.write("\n")
-
-            dockerfile.write("MAINTAINER ")
-            dockerfile.write(image_config["maintainer"])
-            dockerfile.write("\n")
-
-            for port in optional_plural(image_config, "exposes"):
-                dockerfile.write("EXPOSE ")
-                dockerfile.write(port)
-                dockerfile.write("\n")
-
-            for volume in optional_plural(image_config, "volumes"):
-                dockerfile.write("VOLUME [\"")
-                dockerfile.write(volume)
-                dockerfile.write("\"]\n")
-
-            prefix = True
-            for lib_path in optional_plural(image_config, "libs"):
-                if prefix:
-                    dockerfile.write("WORKDIR /tmp/")
-                    dockerfile.write("\n")
-                    prefix = False
-
-                docker_context.include(lib_path, dockerfile)
-
-            for executable_path in optional_plural(image_config, "runs"):
-                path = os.path.join(image_name, executable_path)
-                image_path = docker_context.include(path, dockerfile, True)
-
-                dockerfile.write("RUN [\"")
-                dockerfile.write(image_path)
-                dockerfile.write("\"]\n")
-
-            if "entrypoint" in image_config:
-                entrypoint_path = image_config["entrypoint"]
-                path = os.path.join(image_name, entrypoint_path)
-                image_path = docker_context.include(path, dockerfile, True)
-
-                dockerfile.write("ENTRYPOINT [\"")
-                dockerfile.write(image_path)
-                dockerfile.write("\"]\n")
-
-        logger.info("Building {image_name}".format(**locals()))
-        try:
-            nagoya.docker.watch_build(docker_client.build(path=build_dir, tag=image_name, rm=True, stream=True), quiet_watch)
-        except BuildFailed as e:
-            nagoya.docker.cleanup_container(docker_client, e.residual_container)
-            return 2
+            parse_run_like(entrypoint_spec, "entrypoint", context.entrypoint)
 
 #
 # Build images
