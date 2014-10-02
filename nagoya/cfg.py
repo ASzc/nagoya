@@ -17,6 +17,7 @@ def read_config(paths, default_paths, boolean_options=[]):
     for section in config.sections():
         dictionary[section] = dict()
         for option in config.options(section):
+            # Convert specified booleans
             if option in boolean_options:
                 value = config.getboolean(section, option)
             else:

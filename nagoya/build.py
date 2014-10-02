@@ -164,27 +164,9 @@ def build_container_system(image_name, image_config, client, quiet):
             if not extract_status == 0:
                 raise ContainerExitError("Extract container did not run sucessfully. Exit code: {extract_status}".format(**locals()))
 
-            with TempResourceDirectory() as docker_context:
-                logger.info("Building image {persistimage} with volume data from {container} container".format(**locals()))
-                build_dir = docker_context.name
-                dockerfile_path = os.path.join(build_dir, "Dockerfile")
-                with open(dockerfile_path, "w") as dockerfile:
-                    dockerfile.write("FROM ")
-                    dockerfile.write(container.image)
-                    dockerfile.write("\n")
-
-                    # tar will be unpacked by docker
-                    dockerfile.write("ADD ")
-                    dockerfile.write(host_tar_path)
-                    dockerfile.write(" ")
-                    dockerfile.write("/")
-                    dockerfile.write("\n")
-
-                try:
-                    nagoya.docker.watch_build(docker_client.build(path=build_dir, tag=persistimage, rm=True, stream=True), quiet_watch)
-                except BuildFailed as e:
-                    nagoya.docker.cleanup_container(docker_client, e.residual_container)
-                    return 2
+            logger.info("Building image {persistimage} with volume data from {container} container".format(**locals()))
+            with nagoya.docker.build.BuildContext(persistimage, container.image, docker_client, quiet) as context:
+                context.include(host_tar_path, "/")
 
     temp_system.remove_containers()
 

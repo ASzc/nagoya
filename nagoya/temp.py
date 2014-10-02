@@ -13,7 +13,8 @@ class FileTypeError(Exception):
 
 class TempDirectory(object):
     """
-    Something roughly similar to Python 3's tempfile.TemporaryDirectory
+    Something roughly similar to Python 3's tempfile.TemporaryDirectory, plus
+    an include method for files and directories.
     """
 
     def __init__(self, suffix="", prefix=tempfile.template, dir=None):
