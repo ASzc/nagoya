@@ -1,0 +1,8 @@
+*.swp
+*.pyc
+/toposort.py
+/websocket.py
+/six.py
+/docker/
+/requests/
+/futures/
