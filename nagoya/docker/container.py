@@ -18,7 +18,12 @@ class VolumeLink(object):
 
     @classmethod
     def from_text(cls, text):
-        h, c = text.split(":")
+        s = text.split(":")
+        if len(s) == 1:
+            h = None
+            c, = s
+        else:
+            h, c = s
         return cls(h, c)
 
     def api_formatted(self):
