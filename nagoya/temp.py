@@ -37,7 +37,7 @@ class TempDirectory(object):
     def __exit__(self, exc, value, tb):
         self.cleanup()
 
-    def include(source_path, temp_rel_path, executable=False):
+    def include(self, source_path, temp_rel_path, executable=False):
         if ".." in temp_rel_path:
             raise RelativePathError("Relative path '{temp_rel_path}' contains ..".format(**locals()))
 

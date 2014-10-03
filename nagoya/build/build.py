@@ -66,24 +66,48 @@ def build_container_system(image_name, image_config, client, quiet):
     logger.info("Creating container system for {image_name}".format(**locals()))
 
     with nagoya.build.consys.BuildContainerSystem(root_image=image_config["from"], client=client, cleanup="remove") as bcs:
-        # TODO root commit/discard from config
-        bcs.root
+        if "commit" in image_config and image_config["commit"]:
+            logger.debug("Root container {root} will be committed".format(**locals()))
+            bcs.commit(bcs.root)
+        else:
+            logger.debug("Root container {root} will be discarded".format(**locals()))
 
-        # 
+        if "entrypoint" in image_config:
+            entrypoint_spec = image_config["entrypoint"]
+            match = entrypoint_spec_pattern.match(entrypoint_spec)
+            if match:
+                src_path = match.group("sourcepath").format(name=image_name)
+                workdir_path = match.group("workdirpath")
 
-        root = toji.container(image=TODO, detach=False)
-        
+                bcs.root.working_dir = workdir_path
+                bcs.volume_include(bcs.root, src_path, workdir_path, executable=True)
+            else:
+                raise InvalidFormat("Invalid entrypoint specification '{entrypoint_spec}' for image {image_name}".format(**locals()))
+
+        for lib_spec in optional_plural(image_config, "libs"):
+            match = lib_spec_pattern.match(lib_spec)
+            if match:
+                src_path = match.group("sourcepath").format(name=image_name)
+                dest_path = match.group("destpath")
+                # TODO might need to use dirname to get container_dir to include at
+                bcs.volume_include(bcs.root, src_path, dest_path)
+            else:
+                raise InvalidFormat("Invalid lib specification '{lib_spec}' for image {image_name}".format(**locals()))
+
+            bcs.volume_include(bcs.root, src_path, workdir_path)
+
+        # TODO volumes_from spec processing
+
+        # TODO links spec processing
 
 
-
+    # TODO old below this line, remove once refactoring is done
 
     containers = []
     # Docker volumes don't work with the docker commit operation
     commit_containers = []
     # Only volume containers can be "persisted", as it is a workaround to the docker volume limitations
     persist_containers = []
-
-    # TODO seperate parsing from functionality like was done for regular image build
 
     with TempResourceDirectory(image_root=os.path.join("/", uuid4()[:8])) as vol_host_dir:
         root = nagoya.toji.TempContainer(image=image_config["from"], detach=False)
@@ -137,7 +161,6 @@ def build_container_system(image_name, image_config, client, quiet):
                 raise InvalidFormat("Invalid link specification '{link_spec}' for image {image_name}".format(**locals()))
 
         logger.info("Starting temporary container system")
-        # TODO convert to new Toji api for with ... as
         temp_system = nagoya.toji.Toji(containers)
         temp_system.init_containers()
 
