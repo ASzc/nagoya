@@ -207,17 +207,17 @@ def build_image(image_name, image_config, client, quiet):
         for lib_spec in optional_plural(image_config, "libs"):
             match = lib_spec_pattern.match(lib_spec)
             if match:
-                src_path = match.group("sourcepath")
+                src_path = match.group("sourcepath").format(name=image_name)
                 dest_path = match.group("destpath")
 
-                context.include(lib_path, dest_path)
+                context.include(src_path, dest_path)
             else:
                 raise InvalidFormat("Invalid lib specification '{lib_spec}' for image {image_name}".format(**locals()))
 
         def parse_run_like(spec, opt_name, context_func):
             match = run_spec_pattern.match(spec)
             if match:
-                src_path = match.group("sourcepath")
+                src_path = match.group("sourcepath").format(name=image_name)
                 workdir_path = match.group("workdirpath")
 
                 if not workdir_path == previous_workdir:
