@@ -14,6 +14,7 @@ import uuid
 import docker
 
 import nagoya.docker.build
+import nagoya.build.consys
 
 logger = logging.getLogger("nagoya.build")
 
@@ -63,11 +64,26 @@ ContainerWithDest = collections.namedtuple("ContainerWithDest", ["container", "d
 
 def build_container_system(image_name, image_config, client, quiet):
     logger.info("Creating container system for {image_name}".format(**locals()))
+
+    with nagoya.build.consys.BuildContainerSystem(root_image=image_config["from"], client=client, cleanup="remove") as bcs:
+        # TODO root commit/discard from config
+        bcs.root
+
+        # 
+
+        root = toji.container(image=TODO, detach=False)
+        
+
+
+
+
     containers = []
     # Docker volumes don't work with the docker commit operation
     commit_containers = []
     # Only volume containers can be "persisted", as it is a workaround to the docker volume limitations
     persist_containers = []
+
+    # TODO seperate parsing from functionality like was done for regular image build
 
     with TempResourceDirectory(image_root=os.path.join("/", uuid4()[:8])) as vol_host_dir:
         root = nagoya.toji.TempContainer(image=image_config["from"], detach=False)

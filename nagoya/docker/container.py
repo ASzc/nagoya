@@ -305,5 +305,6 @@ class Container(object):
 class TempContainer(Container):
     def __init__(self, image, name=None, **kwargs):
         image_name = image.split(":")[0]
-        name = image_name + "." + self.random_name()[:8]
+        if name is None:
+            name = image_name + "." + self.random_name()[:8]
         super(TempContainer, self).__init__(image, name=name, **kwargs)

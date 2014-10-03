@@ -4,10 +4,14 @@
 import logging
 import sys
 try:
-    import concurrent.futures
+    import concurrent.futures as futures
 except:
+    # Fall back to local download
     import futures
+
 import docker
+
+import nagoya.docker.container
 
 logger = logging.getLogger("nagoya.toji")
 
@@ -26,6 +30,10 @@ def cft_run(self):
         self.future.set_result(result)
 
 class Toji(object):
+    """
+    Manages a system of containers
+    """
+
     @staticmethod
     def find_sync_groups(containers):
         deps = dict()
@@ -43,22 +51,16 @@ class Toji(object):
 
         return synch_groups
 
-    @staticmethod
-    def cleanup_nothing(toji):
-        pass
+    def __init__(self, containers=None, client=None):
+        self.client = client
 
-    @staticmethod
-    def cleanup_stop(toji):
-        toji.stop_containers()
-
-    @staticmethod
-    def cleanup_remove(toji):
-        toji.remove_containers()
-
-    def __init__(self, containers, cleanup=None):
-        self.containers = containers
-        self.container_sync_groups = self.find_sync_groups(containers)
-        self.cleanup = cleanup if cleanup is not None else self.cleanup_nothing
+        if containers is None:
+            self.containers = []
+            self.container_sync_groups = None
+        else:
+            self.containers = containers
+            # Since containers were given, calculate now to throw any errors here
+            self.container_sync_groups = self.find_sync_groups(containers)
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -75,38 +77,47 @@ class Toji(object):
 
     @property
     def client(self):
-        if not hasattr(self, "_client"):
-            self._client = docker.Client(timeout=10)
+        if self._client is None:
+            self.client = docker.Client(timeout=10)
         return self._client
 
     @client.setter
     def client(self, value):
         self._client = value
 
+    @property
+    def container_sync_groups(self):
+        if not self._sync_groups_calculated:
+            self.container_sync_groups = self.find_sync_groups(self.containers)
+        return self._container_sync_groups
+
+    @container_sync_groups.setter(self, value):
+        self._container_sync_groups = value
+        self._sync_groups_calculated = value is not None
+
     def _container(self, container_type, *args, **kwargs):
         c = container_type(*args, **kwargs)
         c.client = self.client
+        self._sync_groups_calculated = False
+        self.containers.append(c)
         return c
 
     def container(self, *args, **kwargs):
-        return _container(Container, *args, **kwargs)
-
-    def temp_container(self, *args, **kwargs):
-        return _container(TempContainer, *args, **kwargs)
+        return _container(nagoya.docker.container.Container, *args, **kwargs)
 
     # Run against containers in order of dependency groups
     def containers_exec(self, func, group_ordering=lambda x: x):
         # Modify run method on Python 2
         # concurrent.futures.thread only imports sys in Python 2
-        if (hasattr(concurrent.futures.thread, "sys")
-            and not concurrent.futures.thread._WorkItem.run.__code__.co_code == cft_run.__code__.co_code):
-            concurrent.futures.thread._WorkItem.run = cft_run
+        if (hasattr(futures.thread, "sys")
+            and not futures.thread._WorkItem.run.__code__.co_code == cft_run.__code__.co_code):
+            futures.thread._WorkItem.run = cft_run
 
         mw = max(map(len, self.container_sync_groups))
-        with concurrent.futures.ThreadPoolExecutor(max_workers=mw) as pool:
+        with futures.ThreadPoolExecutor(max_workers=mw) as pool:
             for container_group in group_ordering(self.container_sync_groups):
                 fs = [pool.submit(func, c) for c in container_group]
-                for future in concurrent.futures.as_completed(fs):
+                for future in futures.as_completed(fs):
                     ex = future.exception()
                     if ex is not None:
                         # Work around Python 2 truncating the traceback upon rethrowing
@@ -129,13 +140,44 @@ class Toji(object):
     def remove_containers(self):
         self.containers_exec(Container.remove, group_ordering=reversed)
 
+def TempToji(Toji):
+    """
+    Allows the use of "with ... as" blocks for a temporary Toji instance
+    """
+
+    @staticmethod
+    def cleanup_nothing(toji):
+        pass
+
+    @staticmethod
+    def cleanup_stop(toji):
+        toji.stop_containers()
+
+    @staticmethod
+    def cleanup_remove(toji):
+        toji.remove_containers()
+
+    def __init__(self, containers=None, client=None, cleanup=None):
+        if cleanup is None:
+            self.cleanup = self.cleanup_nothing
+        elif isinstance(cleanup, str):
+            if cleanup in ["nothing", "stop", "remove"]:
+                self.cleanup = getattr(self, "cleanup_" + cleanup)
+            else:
+                ValueError("Cleanup function for str {cleanup} is not available".format(**locals()))
+        else:
+            self.cleanup = cleanup
+
+        super(TempToji, self).__init__(containers=containers, client=client)
+
+    def container(self, *args, **kwargs):
+        return _container(nagoya.docker.container.TempContainer, *args, **kwargs)
+
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.cleanup(self)
-        return False
-
 #
 # Main
 #

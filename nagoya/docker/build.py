@@ -174,20 +174,20 @@ class BuildContext(nagoya.temp.TempDirectory):
     def entrypoint(self, image_path, args=[])
         self._write_df("ENTRYPOINT", json.dumps([image_path] + args))
 
-    def __exit__(self, exc, value, tb):
-        # Close Dockerfile
-        self.df.close()
+    def _build(self):
+        try:
+            logger.info("Building {self.image_name}".format(**locals()))
+            build_stream = self.docker_client.build(path=self.name, tag=self.image_name, rm=True, stream=True)
+            watch_build(build_stream, self.quiet)
+        except BuildFailed as e:
+            cleanup_container(docker_client, e.residual_container)
+            raise
 
-        # Build if no exception
-        if exc is None:
-            try:
-                logger.info("Building {self.image_name}".format(**locals()))
-                build_stream = self.docker_client.build(path=self.name, tag=self.image_name, rm=True, stream=True)
-                watch_build(build_stream, self.quiet)
-            except BuildFailed as e:
-                cleanup_container(docker_client, e.residual_container)
-                raise
-            finally:
-                super(BuildContext, self).__exit__(exc, value, tb)
-        else:
+    def __exit__(self, exc, value, tb):
+        try:
+            self.df.close()
+
+            if exc is None:
+                self._build()
+        finally:
             super(BuildContext, self).__exit__(exc, value, tb)
