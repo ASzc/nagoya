@@ -31,7 +31,9 @@ class BuildContainerSystem(nagoya.toji.TempToji):
     def persist(self, container):
         self.to_persist.append(container)
 
-    def volume_include(self, container, src_path, container_dir, executable=False):
+    def volume_include(self, container, src_path, container_path, executable=False):
+        container_dir = os.path.dirname(container_path)
+
         if not container in self.temp_vol_dirs:
             self.temp_vol_dirs[container] = dict()
         if not container_dir in self.temp_vol_dirs[container]:
@@ -40,11 +42,8 @@ class BuildContainerSystem(nagoya.toji.TempToji):
             # TODO ^^^ host volumes working on Fedora depends on Docker#5910
             self.temp_vol_dirs[container][container_dir] = vd
 
-        basename = os.path.basename(src_path)
-        self.temp_vol_dirs[container][container_dir].include(src_path, basename, executable)
-
-        container_path = os.path.join(container_dir, basename)
-        return container_path
+        dest_basename = os.path.basename(container_path)
+        self.temp_vol_dirs[container][container_dir].include(src_path, dest_basename, executable)
 
     def _run(self):
         # TODO start system, wait until root is done, stop system
