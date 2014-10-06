@@ -66,12 +66,6 @@ class BuildContainerSystem(nagoya.toji.TempToji):
 
         for container, image in self.to_persist:
             logger.info("Persisting {container} container to image {image}".format(**locals()))
-            # TODO
-
-            # TODO temp dir to save tar in
-            # TODO make temp container (outside of this Toji system?) use Container class preferably
-            # TODO run,wait,cleanup container
-            # TODO run nagoya.docker.build.BuildContext build for new image, adding saved tar to /
 
             with nagoya.temp.TempDirectory() as tdir:
                 source_volumes = self.client.inspect_container(container=container.name)["Volumes"]
