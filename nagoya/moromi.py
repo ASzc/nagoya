@@ -9,7 +9,7 @@ import collections
 import docker
 
 import nagoya.docker.build
-import nagoya.consys
+import nagoya.buildcsys
 
 logger = logging.getLogger("nagoya.build")
 
@@ -64,10 +64,10 @@ ContainerWithDest = collections.namedtuple("ContainerWithDest", ["container", "d
 def build_container_system(image_name, image_config, client, quiet):
     logger.info("Creating container system for {image_name}".format(**locals()))
 
-    with nagoya.consys.BuildContainerSystem(root_image=image_config["from"],
-                                            client=client,
-                                            cleanup="remove",
-                                            quiet=quiet) as bcs:
+    with nagoya.buildcsys.BuildContainerSystem(root_image=image_config["from"],
+                                               client=client,
+                                               cleanup="remove",
+                                               quiet=quiet) as bcs:
 
         if "commit" in image_config and image_config["commit"]:
             logger.debug("Root container {root} will be committed".format(**locals()))
