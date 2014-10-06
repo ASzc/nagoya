@@ -22,15 +22,7 @@ logger = logging.getLogger("nagoya.build")
 # Exceptions
 #
 
-# TODO remove / refactor these?
-
-class BuildException(Exception):
-    pass
-
-class ContainerExitError(BuildException):
-    pass
-
-class InvalidFormat(BuildException):
+class InvalidFormat(Exception):
     pass
 
 #
@@ -57,34 +49,21 @@ def optional_plural(cfg, key):
 
 container_system_option_names = {"volumes_from", "links", "commit"}
 
-volume_spec_pattern = re.compile(r'^(?P<image>[^ ]+) then (discard$|persist to (?P<persistimage>[^: ]+)$)')
+volume_spec_pattern = re.compile(r'^(?P<image>[^ ]+) then (discard$|persist to (?P<persist_image>[^: ]+)$)')
 VolImg = collections.namedtuple("VolImg", ["image", "persist_image"])
 def parse_volume_spec(spec, opt_name, image_name):
     match = volume_spec_pattern.match(spec)
     if match:
-        gd = match.groupdict()
-        image = gd["image"]
-        if "persistimage" in gd:
-            persist_image = gd["persistimage"]
-        else:
-            persist_image = None
-        return VolImg(image, persist_image)
+        return VolImg(**match.groupdict())
     else:
         raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
 
-link_spec_pattern = re.compile(r'^(?P<image>[^ ]+) alias (?P<alias>[^ ]+) then (discard$|commit to (?P<commitimage>[^: ]+)$)')
+link_spec_pattern = re.compile(r'^(?P<image>[^ ]+) alias (?P<alias>[^ ]+) then (discard$|commit to (?P<commit_image>[^: ]+)$)')
 LinkImg = collections.namedtuple("LinkImg", ["image", "alias", "commit_image"])
 def parse_link_spec(spec, opt_name, image_name):
     match = link_spec_pattern.match(spec)
     if match:
-        gd = match.groupdict()
-        image = gd["image"]
-        alias = gd["alias"]
-        if "commitimage" in gd:
-            commit_image = gd["commitimage"]
-        else:
-            commit_image = None
-        return LinkImg(image, alias, commit_image)
+        return LinkImg(**match.groupdict())
     else:
         raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
 
