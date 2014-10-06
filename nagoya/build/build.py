@@ -58,7 +58,35 @@ def optional_plural(cfg, key):
 container_system_option_names = {"volumes_from", "links", "commit"}
 
 volume_spec_pattern = re.compile(r'^(?P<image>[^ ]+) then (discard$|persist to (?P<persistimage>[^: ]+)$)')
+VolImg = collections.namedtuple("VolImg", ["image", "persist_image"])
+def parse_volume_spec(spec, opt_name, image_name):
+    match = volume_spec_pattern.match(spec)
+    if match:
+        gd = match.groupdict()
+        image = gd["image"]
+        if "persistimage" in gd:
+            persist_image = gd["persistimage"]
+        else:
+            persist_image = None
+        return VolImg(image, persist_image)
+    else:
+        raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
+
 link_spec_pattern = re.compile(r'^(?P<image>[^ ]+) alias (?P<alias>[^ ]+) then (discard$|commit to (?P<commitimage>[^: ]+)$)')
+LinkImg = collections.namedtuple("LinkImg", ["image", "alias", "commit_image"])
+def parse_link_spec(spec, opt_name, image_name):
+    match = link_spec_pattern.match(spec)
+    if match:
+        gd = match.groupdict()
+        image = gd["image"]
+        alias = gd["alias"]
+        if "commitimage" in gd:
+            commit_image = gd["commitimage"]
+        else:
+            commit_image = None
+        return LinkImg(image, alias, commit_image)
+    else:
+        raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
 
 ContainerWithDest = collections.namedtuple("ContainerWithDest", ["container", "destimage"])
 
@@ -69,8 +97,6 @@ def build_container_system(image_name, image_config, client, quiet):
         if "commit" in image_config and image_config["commit"]:
             logger.debug("Root container {root} will be committed".format(**locals()))
             bcs.commit(bcs.root)
-        else:
-            logger.debug("Root container {root} will be discarded".format(**locals()))
 
         if "entrypoint" in image_config:
             entrypoint_spec = image_config["entrypoint"]
@@ -83,12 +109,22 @@ def build_container_system(image_name, image_config, client, quiet):
             bcs.volume_include(bcs.root, res_paths.src_path, dest_dir.dest_path)
 
         for volume_spec in optional_plural(image_config, "volumes_from"):
-            asd
+            vol = parse_volume_spec(volume_spec, "volume_from", image_name)
+            vol_container = bcs.container(image=vol.image, detach=False)
+            logger.debug("Root container will have volumes from container {vol_container}".format(**locals()))
+            bcs.root.add_volume_from(vol_container.name, "rw")
+            if vol.persist_image is not None:
+                logger.debug("Container {vol_container} will be persisted to {vol.persist_image}".format(**locals()))
+                bcs.persist(vol_container, vol.persist_image)
 
-
-        # TODO volumes_from spec processing
-
-        # TODO links spec processing
+        for link_spec in optional_plural(image_config, "links"):
+            link = parse_link_spec(image_spec, "link", image_name)
+            link_container = bcs.container(image=link.image, detach=True)
+            logger.debug("Root container will be linked to container {link_container}".format(**locals()))
+            bcs.root.add_volume_from(link_container.name, "rw")
+            if link.commit_image is not None:
+                logger.debug("Container {link_container} will be committed to {vol.commit_image}".format(**locals()))
+                bcs.persist(link_container, link.commit_image)
 
 
     # TODO old below this line, remove once refactoring is done

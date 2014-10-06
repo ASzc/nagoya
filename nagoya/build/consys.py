@@ -1,11 +1,14 @@
 import logging
 import os
+import collections
 
 import nagoya.toji
 import nagoya.temp
 import nagoya.docker.container
 
 logger = logging.getLogger("nagoya.build")
+
+ContrainerAndDest = collections.namedtuple("ContainerAndDest", ["container", "dest_image"])
 
 class BuildContainerSystem(nagoya.toji.TempToji):
     """
@@ -25,11 +28,11 @@ class BuildContainerSystem(nagoya.toji.TempToji):
         self.containers.append(root)
         return root
 
-    def commit(self, container):
-        self.to_commit.append(container)
+    def commit(self, container, dest_image):
+        self.to_commit.append(ContrainerAndDest(container, dest_image))
 
-    def persist(self, container):
-        self.to_persist.append(container)
+    def persist(self, container, dest_image):
+        self.to_persist.append(ContrainerAndDest(container, dest_image))
 
     def volume_include(self, container, src_path, container_path, executable=False):
         container_dir = os.path.dirname(container_path)
@@ -47,7 +50,14 @@ class BuildContainerSystem(nagoya.toji.TempToji):
 
     def _run(self):
         # TODO start system, wait until root is done, stop system
-        pass
+        logger.info("Starting temporary container system")
+        self.init_containers()
+
+        logger.info("Waiting for the root container to finish")
+        self.root.wait(error_ok=False)
+
+        logger.info("Stopping temporary container system")
+        self.stop_containers()
 
     def _build(self):
         # TODO process commit containers
