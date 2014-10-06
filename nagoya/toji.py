@@ -11,6 +11,7 @@ except:
 
 import docker
 
+import nagoya.args
 import nagoya.docker.container
 
 logger = logging.getLogger("nagoya.toji")
@@ -91,7 +92,8 @@ class Toji(object):
             self.container_sync_groups = self.find_sync_groups(self.containers)
         return self._container_sync_groups
 
-    @container_sync_groups.setter(self, value):
+    @container_sync_groups.setter
+    def container_sync_groups(self, value):
         self._container_sync_groups = value
         self._sync_groups_calculated = value is not None
 

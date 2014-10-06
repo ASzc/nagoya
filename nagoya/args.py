@@ -67,7 +67,7 @@ def create_default_argument_parser(with_config=True, **kwargs):
 
     return parser
 
-def run_subcommand_func(args, parser)
+def run_subcommand_func(args, parser):
     if "func" in args:
         sys.exit(args.func(args))
     else:

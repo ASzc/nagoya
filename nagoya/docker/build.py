@@ -146,32 +146,32 @@ class BuildContext(nagoya.temp.TempDirectory):
     def _from(self, image_name):
         self._write_df("FROM", image_name)
 
-    def maintainer(self, maintainer)
+    def maintainer(self, maintainer):
         self._write_df("MAINTAINER", maintainer)
 
-    def expose(self, port)
+    def expose(self, port):
         self._write_df("EXPOSE", port)
 
-    def volume(self, volume)
+    def volume(self, volume):
         self._write_df("VOLUME", volume)
 
-    def workdir(self, workdir)
+    def workdir(self, workdir):
         self._write_df("WORKDIR", workdir)
 
     def add(self, context_path, image_path):
         self._write_df("ADD", context_path, image_path)
 
-    def include(self, source_path, image_path, executable=False)
+    def include(self, source_path, image_path, executable=False):
         # Include in context dir
         context_rel_path = os.path.normpath(image_path)
         super(BuildContext, self).include(source_path, context_rel_path, executable)
         # Add to image from context dir
         self.add(context_rel_path, image_path)
 
-    def run(self, image_path, args=[])
+    def run(self, image_path, args=[]):
         self._write_df("RUN", json.dumps([image_path] + args))
 
-    def entrypoint(self, image_path, args=[])
+    def entrypoint(self, image_path, args=[]):
         self._write_df("ENTRYPOINT", json.dumps([image_path] + args))
 
     def _build(self):
