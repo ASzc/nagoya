@@ -217,11 +217,8 @@ class Container(object):
                               volumes_from=self.volumes_from_api_formatted())
             if not self.detach:
                 logger.info("Waiting for container {0} to finish".format(self))
-                status_code = self.wait()
-                if status_code == 0:
-                    logger.info("Container {0} exited ok".format(self))
-                else:
-                    raise ContainerExitError(status_code, self.client.logs(self.name))
+                status_code = self.wait(error_ok=False)
+                logger.info("Container {0} exited ok".format(self))
             else:
                 logger.info("Started container {0}".format(self))
             self._process_callbacks("post", "start")
@@ -247,12 +244,12 @@ class Container(object):
                 self._process_callbacks("pre", "stop")
                 self.client.kill(container=self.name, signal=15)
                 try:
-                    self.wait(timeout=20)
+                    self.wait(timeout=20, error_ok=True)
                     logger.info("Stopped container {0}".format(self))
                 except requests.exceptions.Timeout:
                     self.client.kill(container=self.name, signal=9)
                     try:
-                        self.wait(timeout=20)
+                        self.wait(timeout=20, error_ok=True)
                         logger.info("Killed container {0}".format(self))
                         self._process_callbacks("post", "stop")
                     except requests.exceptions.Timeout as e:
@@ -276,13 +273,16 @@ class Container(object):
             else:
                 raise
 
-    # docker-py wait doesn't provide a timeout parameter
-    def wait(self, timeout=None):
+    def wait(self, timeout=None, error_ok=False):
         url = self.client._url("/containers/{0}/wait".format(self.name))
         res = self.client._post(url, timeout=timeout)
         self.client._raise_for_status(res)
         d = res.json()
-        return d["StatusCode"] if "StatusCode" in d else -1
+        status = d["StatusCode"] if "StatusCode" in d else -1
+        if error_ok or status == 0:
+            return status
+        else:
+            raise ContainerExitError(status, self.client.logs(self.name))
 
     def dependency_names(self):
         deps = set()
@@ -303,6 +303,21 @@ class Container(object):
 
     def links_api_formatted(self):
         return [l.api_formatted() for l in self.links]
+
+    def add_volume(self, *args, **kwargs):
+        link = VolumeLink(*args, **kwargs)
+        self.volumes.append(link)
+        return link
+
+    def add_volume_from(self, *args, **kwargs):
+        link = VolumeFromLink(*args, **kwargs)
+        self.volumes_from.append(link)
+        return link
+
+    def add_link(self, *args, **kwargs):
+        link = NetworkLink(*args, **kwargs)
+        self.links.append(link)
+        return link
 
     def __str__(self):
         return self.name
