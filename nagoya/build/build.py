@@ -74,12 +74,12 @@ def build_container_system(image_name, image_config, client, quiet):
 
         if "entrypoint" in image_config:
             entrypoint_spec = image_config["entrypoint"]
-            res_paths = try_dir_spec(entrypoint_spec, "entrypoint", image_name)
+            res_paths = parse_dir_spec(entrypoint_spec, "entrypoint", image_name)
             bcs.root.working_dir = res_paths.dest_dir
             bcs.volume_include(bcs.root, res_paths.src_path, res_paths.dest_path, executable=True)
 
         for lib_spec in optional_plural(image_config, "libs"):
-            res_paths = try_dir_spec(lib_spec, "lib", image_name)
+            res_paths = parse_dir_spec(lib_spec, "lib", image_name)
             bcs.volume_include(bcs.root, res_paths.src_path, dest_dir.dest_path)
 
         for volume_spec in optional_plural(image_config, "volumes_from"):
@@ -207,7 +207,7 @@ dir_spec_pattern = re.compile(r'^(?P<sourcepath>.+) (?:in (?P<inpath>.+)|at (?P<
 
 ResPaths = collections.namedtuple("ResCopyPaths", ["src_path", "dest_path", "dest_dir"])
 
-def parse_dir_spec(spec):
+def parse_dir_spec(spec, opt_name, image_name):
     match = dir_spec_pattern.match(spec)
     if match:
         gd = match.groupdict()
@@ -225,13 +225,7 @@ def parse_dir_spec(spec):
 
         return ResPaths(src_path, image_path, image_dir)
     else:
-        return None
-
-def try_dir_spec(spec, opt_name, image_name):
-    res_paths = parse_dir_spec(spec)
-    if res_paths is None:
         raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
-    return res_paths
 
 def build_image(image_name, image_config, client, quiet):
     logger.info("Generating files for {image_name}".format(**locals()))
@@ -245,7 +239,7 @@ def build_image(image_name, image_config, client, quiet):
             context.volume(volume)
 
         for lib_spec in optional_plural(image_config, "libs"):
-            res_paths = try_dir_spec(lib_spec, "lib", image_name)
+            res_paths = parse_dir_spec(lib_spec, "lib", image_name)
             context.include(res_paths.src_path, res_paths.dest_path)
 
         previous_workdir = ""
@@ -255,14 +249,14 @@ def build_image(image_name, image_config, client, quiet):
                 previous_workdir = image_dir
 
         for run_spec in optional_plural(image_config, "runs"):
-            res_paths = try_dir_spec(run_spec, "run", image_name)
+            res_paths = parse_dir_spec(run_spec, "run", image_name)
             context.include(res_paths.src_path, res_paths.dest_path, executable=True)
             add_workdir(res_paths.dest_dir)
             context.run(res_paths.dest_path)
 
         if "entrypoint" in image_config:
             entrypoint_spec = image_config["entrypoint"]
-            res_paths = try_dir_spec(entrypoint_spec, "entrypoint", image_name)
+            res_paths = parse_dir_spec(entrypoint_spec, "entrypoint", image_name)
             context.include(res_paths.src_path, res_paths.dest_path, executable=True)
             add_workdir(res_paths.dest_dir)
             context.entrypoint(res_paths.dest_path)
