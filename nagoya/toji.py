@@ -11,7 +11,6 @@ except:
 
 import docker
 
-import nagoya.args
 import nagoya.docker.container
 
 logger = logging.getLogger("nagoya.toji")
@@ -70,11 +69,6 @@ class Toji(object):
         for container in instance.containers:
             container.client = instance.client
         return instance
-
-    @classmethod
-    def from_config(cls, paths, **kwargs):
-        config_dict = nagoya.cfg.read_config(paths, default_config_paths, boolean_config_options)
-        return cls.from_dict(config_dict, **kwargs)
 
     @property
     def client(self):
@@ -180,40 +174,3 @@ def TempToji(Toji):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.cleanup(self)
-#
-# Main
-#
-
-# TODO might have to put this in a seperate file outside of the module if running the module doesn't work properly
-
-default_config_paths = ["containers.cfg"]
-boolean_config_options = ["multiple", "detach", "run_once"]
-
-def _config_dict(args):
-    return nagoya.cfg.read_config(args.config, default_config_paths, boolean_config_options)
-
-def sc_init(args):
-    toji = Toji.from_dict(_config_dict(args))
-    toji.init_containers()
-
-def sc_start(args):
-    toji = Toji.from_dict(_config_dict(args))
-    toji.start_containers()
-
-def sc_stop(args):
-    toji = Toji.from_dict(_config_dict(args))
-    toji.stop_containers()
-
-def sc_remove(args):
-    toji = Toji.from_dict(_config_dict(args))
-    toji.remove_containers()
-
-if __name__ == "__main__":
-    parser = nagoya.args.create_default_argument_parser(description="Manage Koji Docker container systems")
-    nagoya.args.add_subcommand_subparsers(parser)
-    nagoya.args.attempt_autocomplete(parser)
-    args = parser.parse_args()
-
-    nagoya.log.setup_logger(args.quiet, args.verbose)
-
-    nagoya.args.run_subcommand_func(args, parser)
