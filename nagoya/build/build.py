@@ -121,7 +121,7 @@ def build_container_system(image_name, image_config, client, quiet):
             link = parse_link_spec(image_spec, "link", image_name)
             link_container = bcs.container(image=link.image, detach=True)
             logger.debug("Root container will be linked to container {link_container}".format(**locals()))
-            bcs.root.add_volume_from(link_container.name, "rw")
+            bcs.root.add_link(link_container.name, "rw")
             if link.commit_image is not None:
                 logger.debug("Container {link_container} will be committed to {vol.commit_image}".format(**locals()))
                 bcs.persist(link_container, link.commit_image)

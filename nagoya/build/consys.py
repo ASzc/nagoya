@@ -41,7 +41,7 @@ class BuildContainerSystem(nagoya.toji.TempToji):
             self.temp_vol_dirs[container] = dict()
         if not container_dir in self.temp_vol_dirs[container]:
             vd = nagoya.temp.TempDirectory()
-            container.volumes.append(nagoya.docker.container.VolumeLink(vd, container_dir))
+            container.add_volume(vd, container_dir)
             # TODO ^^^ host volumes working on Fedora depends on Docker#5910
             self.temp_vol_dirs[container][container_dir] = vd
 
@@ -49,7 +49,6 @@ class BuildContainerSystem(nagoya.toji.TempToji):
         self.temp_vol_dirs[container][container_dir].include(src_path, dest_basename, executable)
 
     def _run(self):
-        # TODO start system, wait until root is done, stop system
         logger.info("Starting temporary container system")
         self.init_containers()
 
@@ -60,11 +59,13 @@ class BuildContainerSystem(nagoya.toji.TempToji):
         self.stop_containers()
 
     def _build(self):
-        # TODO process commit containers
+        for container, image in self.to_commit:
+            logger.info("Commiting {container} container to image {image}".format(**locals()))
+            self.client.commit(container, image)
 
-        # TODO process persist containers
-
-        pass
+        for container, image in self.to_persist:
+            logger.info("Persisting {container} container to image {image}".format(**locals()))
+            # TODO
 
     def __exit__(self, exc, value, tb):
         try:
