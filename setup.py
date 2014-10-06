@@ -24,6 +24,7 @@ install_requires = [
 if sys.version_info[0] < 3:
     install_requires.append("futures>=2.2.0")
 
+# Sets __version__ without importing the module
 with open("nagoya/version.py", "r") as fp:
     exec(fp.read())
 
@@ -32,7 +33,7 @@ with open("README.md", "r") as fp:
 
 setup(
     name="nagoya",
-    version=version,
+    version=__version__,
     description="Koji in Docker containers",
     keywords = ["docker", "koji"],
     url="https://github.com/ASzc/nagoya",
