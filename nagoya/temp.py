@@ -2,6 +2,7 @@ import tempfile
 import shutil
 import logging
 import os
+import stat
 
 logger = logging.getLogger("nagoya.temp")
 

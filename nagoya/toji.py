@@ -10,6 +10,7 @@ except:
     import futures
 
 import docker
+import toposort
 
 import nagoya.docker.container
 
@@ -64,7 +65,7 @@ class Toji(object):
 
     @classmethod
     def from_dict(cls, d, **kwargs):
-        containers = [Container.from_dict(name, sub) for name,sub in d.items()]
+        containers = [nagoya.docker.container.Container.from_dict(name, sub) for name,sub in d.items()]
         instance = cls(containers=containers, **kwargs)
         for container in instance.containers:
             container.client = instance.client
@@ -99,7 +100,7 @@ class Toji(object):
         return c
 
     def container(self, *args, **kwargs):
-        return _container(nagoya.docker.container.Container, *args, **kwargs)
+        return self._container(nagoya.docker.container.Container, *args, **kwargs)
 
     # Run against containers in order of dependency groups
     def containers_exec(self, func, group_ordering=lambda x: x):
@@ -125,16 +126,16 @@ class Toji(object):
                         raise ex
 
     def init_containers(self):
-        self.containers_exec(Container.init)
+        self.containers_exec(nagoya.docker.container.Container.init)
 
     def start_containers(self):
-        self.containers_exec(Container.start)
+        self.containers_exec(nagoya.docker.container.Container.start)
 
     def stop_containers(self):
-        self.containers_exec(Container.stop, group_ordering=reversed)
+        self.containers_exec(nagoya.docker.container.Container.stop, group_ordering=reversed)
 
     def remove_containers(self):
-        self.containers_exec(Container.remove, group_ordering=reversed)
+        self.containers_exec(nagoya.docker.container.Container.remove, group_ordering=reversed)
 
 def TempToji(Toji):
     """
@@ -167,7 +168,7 @@ def TempToji(Toji):
         super(TempToji, self).__init__(containers=containers, client=client)
 
     def container(self, *args, **kwargs):
-        return _container(nagoya.docker.container.TempContainer, *args, **kwargs)
+        return self._container(nagoya.docker.container.TempContainer, *args, **kwargs)
 
     def __enter__(self):
         return self

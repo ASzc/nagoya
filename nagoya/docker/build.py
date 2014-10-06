@@ -4,6 +4,8 @@ import json
 import re
 import os
 
+import docker
+
 import nagoya.temp
 
 logger = logging.getLogger("nagoya.docker")
@@ -180,7 +182,7 @@ class BuildContext(nagoya.temp.TempDirectory):
             build_stream = self.docker_client.build(path=self.name, tag=self.image_name, rm=True, stream=True)
             watch_build(build_stream, self.quiet)
         except BuildFailed as e:
-            cleanup_container(docker_client, e.residual_container)
+            cleanup_container(self.docker_client, e.residual_container)
             raise
 
     def __exit__(self, exc, value, tb):

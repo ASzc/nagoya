@@ -3,6 +3,7 @@ import logging
 import uuid
 
 import docker
+import requests
 
 logger = logging.getLogger("nagoya.docker")
 

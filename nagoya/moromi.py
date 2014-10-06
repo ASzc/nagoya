@@ -81,7 +81,7 @@ def build_container_system(image_name, image_config, client, quiet):
 
         for lib_spec in optional_plural(image_config, "libs"):
             res_paths = parse_dir_spec(lib_spec, "lib", image_name)
-            bcs.volume_include(bcs.root, res_paths.src_path, dest_dir.dest_path)
+            bcs.volume_include(bcs.root, res_paths.src_path, res_paths.dest_path)
 
         for volume_spec in optional_plural(image_config, "volumes_from"):
             vol = parse_volume_spec(volume_spec, "volume_from", image_name)
@@ -93,7 +93,7 @@ def build_container_system(image_name, image_config, client, quiet):
                 bcs.persist(vol_container, vol.persist_image)
 
         for link_spec in optional_plural(image_config, "links"):
-            link = parse_link_spec(image_spec, "link", image_name)
+            link = parse_link_spec(link_spec, "link", image_name)
             link_container = bcs.container(image=link.image, detach=True)
             logger.debug("Root container will be linked to container {link_container}".format(**locals()))
             bcs.root.add_link(link_container.name, "rw")
@@ -116,10 +116,10 @@ def parse_dir_spec(spec, opt_name, image_name):
         src_path = gd["sourcepath"]
         src_basename = os.path.basename(src_path)
 
-        if inpath in gd:
+        if "inpath" in gd:
             image_dir = gd["inpath"]
             image_path = os.path.join(image_dir, src_basename)
-        elif atpath in gd:
+        elif "atpath" in gd:
             image_path = gd["atpath"]
             image_dir = os.path.dirname(image_path)
         else:
