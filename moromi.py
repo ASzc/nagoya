@@ -2,9 +2,9 @@
 # PYTHON_ARGCOMPLETE_OK
 # Will run in Python 2 or Python 3
 
-import nagoya.args
-import nagoya.log
-import nagoya.cfg
+import nagoya.cli.args
+import nagoya.cli.log
+import nagoya.cli.cfg
 import nagoya.moromi
 
 default_config_paths = ["images.cfg"]
