@@ -94,7 +94,9 @@ def build_container_system(image_name, image_config, client, quiet):
             else:
                 raise InvalidFormat("Invalid lib specification '{lib_spec}' for image {image_name}".format(**locals()))
 
-            bcs.volume_include(bcs.root, src_path, workdir_path)
+        for volume_spec in optional_plural(image_config, "volumes_from"):
+            asd
+
 
         # TODO volumes_from spec processing
 
@@ -213,8 +215,36 @@ def build_container_system(image_name, image_config, client, quiet):
 # Standard image build
 #
 
-lib_spec_pattern = re.compile(r'^(?P<sourcepath>.+) at (?P<destpath>.+)$')
-run_spec_pattern = re.compile(r'^(?P<sourcepath>.+) in (?P<workdirpath>.+)$')
+dir_spec_pattern = re.compile(r'^(?P<sourcepath>.+) (?:in (?P<inpath>.+)|at (?P<atpath>.+))$')
+
+def parse_dir_spec(spec):
+    match = dir_spec_pattern.match(spec)
+    if match:
+        gd = match.groupdict()
+        src_path = gd["sourcepath"]
+        src_basename = os.path.basename(src_path)
+
+        if inpath in gd:
+            image_dir = gd["inpath"]
+            image_path = os.path.join(image_dir, src_basename)
+        elif atpath in gd:
+            image_path = gd["atpath"]
+            image_dir = os.path.dirname(image_path)
+        else:
+            raise Exception("dir_spec_pattern is broken")
+
+        return (image_path, image_dir)
+    else:
+        return None
+
+def try_dir_spec(spec, opt_name, image_name):
+    image_paths = parse_dir_spec(spec)
+    if image_paths is None:
+        raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
+    return image_paths
+
+#lib_spec_pattern = re.compile(r'^(?P<sourcepath>.+) at (?P<destpath>.+)$')
+#run_spec_pattern = re.compile(r'^(?P<sourcepath>.+) in (?P<workdirpath>.+)$')
 
 def build_image(image_name, image_config, client, quiet):
     logger.info("Generating files for {image_name}".format(**locals()))
@@ -228,38 +258,25 @@ def build_image(image_name, image_config, client, quiet):
             context.volume(volume)
 
         for lib_spec in optional_plural(image_config, "libs"):
-            match = lib_spec_pattern.match(lib_spec)
-            if match:
-                src_path = match.group("sourcepath").format(name=image_name)
-                dest_path = match.group("destpath")
-
-                context.include(src_path, dest_path)
-            else:
-                raise InvalidFormat("Invalid lib specification '{lib_spec}' for image {image_name}".format(**locals()))
-
-        def parse_run_like(spec, opt_name, context_func):
-            match = run_spec_pattern.match(spec)
-            if match:
-                src_path = match.group("sourcepath").format(name=image_name)
-                workdir_path = match.group("workdirpath")
-
-                if not workdir_path == previous_workdir:
-                    context.workdir(workdir_path)
-                    previous_workdir = workdir_path
-                basename = os.path.basename(src_path)
-                image_path = os.path.join(workdir_path, basename)
-                context.include(src_path, image_path, executable=True)
-                context_func(image_path)
-            else:
-                raise InvalidFormat("Invalid {0} specification '{1}' for image {2}".format(opt_name, spec, image_name))
+            image_path, image_dir = try_dir_spec(lib_spec, "lib", image_name)
+            context.include(src_path, image_path)
 
         previous_workdir = ""
+        def add_workdir(image_dir):
+            if not previous_workdir == image_dir:
+                context.workdir(image_dir)
+                previous_workdir = image_dir
+
         for run_spec in optional_plural(image_config, "runs"):
-            parse_run_like(run_spec, "run", context.run)
+            image_path, image_dir = try_dir_spec(run_spec, "run", image_name)
+            add_workdir(image_dir)
+            context.run(image_path)
 
         if "entrypoint" in image_config:
             entrypoint_spec = image_config["entrypoint"]
-            parse_run_like(entrypoint_spec, "entrypoint", context.entrypoint)
+            image_path, image_dir = try_dir_spec(entrypoint_spec, "entrypoint", image_name)
+            add_workdir(image_dir)
+            context.entrypoint(image_path)
 
 #
 # Build images
