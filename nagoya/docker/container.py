@@ -1,5 +1,7 @@
 import importlib
 import logging
+import uuid
+
 import docker
 
 logger = logging.getLogger("nagoya.docker")

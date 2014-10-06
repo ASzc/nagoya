@@ -16,12 +16,13 @@ class BuildContainerSystem(nagoya.toji.TempToji):
     multiple ways.
     """
 
-    def __init__(self, root_image, containers=None, client=None, cleanup=None):
+    def __init__(self, root_image, containers=None, client=None, cleanup=None, quiet=False):
         super(BuildContainerSystem, self).__init__(containers=containers, client=client, cleanup=cleanup)
         self.root = self._root(root_image)
         self.to_commit = []
         self.to_persist = []
         self.temp_vol_dirs = dict()
+        self.quiet = quiet
 
     def _root(self, image_name):
         root = self.container(image=image_name, detach=False)
@@ -41,7 +42,7 @@ class BuildContainerSystem(nagoya.toji.TempToji):
             self.temp_vol_dirs[container] = dict()
         if not container_dir in self.temp_vol_dirs[container]:
             vd = nagoya.temp.TempDirectory()
-            container.add_volume(vd, container_dir)
+            container.add_volume(vd.name, container_dir)
             # TODO ^^^ host volumes working on Fedora depends on Docker#5910
             self.temp_vol_dirs[container][container_dir] = vd
 
@@ -66,6 +67,34 @@ class BuildContainerSystem(nagoya.toji.TempToji):
         for container, image in self.to_persist:
             logger.info("Persisting {container} container to image {image}".format(**locals()))
             # TODO
+
+            # TODO temp dir to save tar in
+            # TODO make temp container (outside of this Toji system?) use Container class preferably
+            # TODO run,wait,cleanup container
+            # TODO run nagoya.docker.build.BuildContext build for new image, adding saved tar to /
+
+            with nagoya.temp.TempDirectory() as tdir:
+                source_volumes = self.client.inspect_container(container=container.name)["Volumes"]
+                # busybox's tar won't accept file/dir arguments with a starting slash
+                volume_paths = [v.lstrip("/") for v in source_volumes.keys()]
+
+                logger.debug("Extracting files from {container} volumes".format(**locals()))
+                container_volume_dir = os.path.join("/", container.random_name())
+                container_tar_path = os.path.join(container_volume_dir, "extract.tar")
+                host_tar_path = os.path.join(tdir.name, "extract.tar")
+
+                extract_container = nagoya.docker.container.TempContainer("busybox")
+                extract_container.client = self.client
+                extract_container.add_volume(tdir.name, container_volume_dir)
+                # TODO ^^^ host volumes working on Fedora depends on Docker#5910
+                extract_container.add_volume_from(container.name, "ro")
+                extract_container.entrypoint = ["tar", "-cf", container_tar_path] + volume_paths
+                extract_container.init()
+                extract_container.wait(error_ok=False)
+
+                logger.info("Building image {image} with volume data from {container} container".format(**locals()))
+                with nagoya.docker.build.BuildContext(image, container.image, self.client, self.quiet) as context:
+                    context.include(host_tar_path, "/")
 
     def __exit__(self, exc, value, tb):
         try:

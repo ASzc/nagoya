@@ -2,14 +2,9 @@
 # PYTHON_ARGCOMPLETE_OK
 
 import logging
-import sys
 import os
-import stat
-import shutil
-import tempfile
 import re
 import collections
-import uuid
 
 import docker
 
@@ -28,9 +23,6 @@ class InvalidFormat(Exception):
 #
 # Helpers
 #
-
-def uuid4():
-    return str(uuid.uuid4())
 
 def line_split(string):
     return map(str.strip, string.split("\n"))
@@ -72,7 +64,11 @@ ContainerWithDest = collections.namedtuple("ContainerWithDest", ["container", "d
 def build_container_system(image_name, image_config, client, quiet):
     logger.info("Creating container system for {image_name}".format(**locals()))
 
-    with nagoya.build.consys.BuildContainerSystem(root_image=image_config["from"], client=client, cleanup="remove") as bcs:
+    with nagoya.build.consys.BuildContainerSystem(root_image=image_config["from"],
+                                                  client=client,
+                                                  cleanup="remove",
+                                                  quiet=quiet) as bcs:
+
         if "commit" in image_config and image_config["commit"]:
             logger.debug("Root container {root} will be committed".format(**locals()))
             bcs.commit(bcs.root)
@@ -104,115 +100,6 @@ def build_container_system(image_name, image_config, client, quiet):
             if link.commit_image is not None:
                 logger.debug("Container {link_container} will be committed to {vol.commit_image}".format(**locals()))
                 bcs.persist(link_container, link.commit_image)
-
-
-    # TODO old below this line, remove once refactoring is done
-
-    containers = []
-    # Docker volumes don't work with the docker commit operation
-    commit_containers = []
-    # Only volume containers can be "persisted", as it is a workaround to the docker volume limitations
-    persist_containers = []
-
-    with TempResourceDirectory(image_root=os.path.join("/", uuid4()[:8])) as vol_host_dir:
-        root = nagoya.toji.TempContainer(image=image_config["from"], detach=False)
-        containers.append(root)
-        if "commit" in image_config and image_config["commit"]:
-            logger.debug("Root container {root} will be committed".format(**locals()))
-            commit_containers.append(root)
-        else:
-            logger.debug("Root container {root} will be discarded".format(**locals()))
-
-        # Container-time override of image's entrypoint
-        if "entrypoint" in image_config:
-            path = os.path.join(image_name, image_config["entrypoint"])
-            root.entrypoint = vol_host_dir.include(path, executable=True)
-
-        for lib_path in optional_plural(image_config, "libs"):
-            vol_host_dir.include(lib_path)
-
-        # Container-time override of image's working dir
-        root.working_dir = vol_host_dir.image_root
-        # Container-time definition of container volume
-        root.volumes.append(nagoya.toji.VolumeLink(vol_host_dir.name, vol_host_dir.image_root))
-        # TODO ^^^ does not work because selinux does not allow container processes access to anything outside their own data. Fix is blocked pending a release with this PR in it: https://github.com/docker/docker/pull/5910
-
-        for volume_spec in optional_plural(image_config, "volumes_from"):
-            match = volume_spec_pattern.match(volume_spec)
-            if match:
-                spec = match.groupdict()
-                container = nagoya.toji.TempContainer(image=spec["image"], detach=False)
-                logger.debug("Root container will have volumes from container {container}".format(**locals()))
-                root.volumes_from.append(nagoya.toji.VolumeFromLink(container.name, "rw"))
-                containers.append(container)
-                if "persistimage" in spec:
-                    logger.debug("Container {container} will be persisted".format(**locals()))
-                    persist_containers.append(ContainerWithDest(container, spec["persistimage"]))
-            else:
-                raise InvalidFormat("Invalid volume from specification '{volume_spec}' for image {image_name}".format(**locals()))
-
-        for link_spec in optional_plural(image_config, "links"):
-            match = link_spec_pattern.match(link_spec)
-            if match:
-                spec = match.groupdict()
-                container = nagoya.toji.TempContainer(image=spec["image"], detach=True)
-                logger.debug("Root container will be linked to container {container}".format(**locals()))
-                root.links.append(toji.NetworkLink(container.name, spec["alias"]))
-                containers.append(container)
-                if "commitimage" in spec:
-                    logger.debug("Container {container} will be committed".format(**locals()))
-                    commit_containers.append(ContainerWithDest(container, spec["commitimage"]))
-            else:
-                raise InvalidFormat("Invalid link specification '{link_spec}' for image {image_name}".format(**locals()))
-
-        logger.info("Starting temporary container system")
-        temp_system = nagoya.toji.Toji(containers)
-        temp_system.init_containers()
-
-        logger.info("Waiting for the root container to finish")
-        status_code = docker_client.wait(root.name)
-        if not status_code == 0:
-            raise ContainerExitError("Root container did not run sucessfully. Exit code: {status_code}".format(**locals()))
-
-        temp_system.stop_containers()
-
-    for container,commitimage in commit_containers:
-        logger.info("Commiting {container} container to image {commitimage}".format(**locals()))
-        docker_client.commit(container, commitimage)
-
-    for container,persistimage in persist_containers:
-        logger.info("Persisting {container} container to image {persistimage}".format(**locals()))
-        with TempResourceDirectory(image_root=os.path.join("/", uuid4())) as extract_dest_dir:
-            source_data = docker_client.inspect_container(container=container.name)
-            source_volumes = source_data["Volumes"].keys()
-            # busybox's tar won't accept file/dir arguments with a starting slash
-            volume_paths = [v.lstrip("/") for v in source_volumes]
-
-            logger.info("Extracting volume data from {container} container".format(**locals()))
-            image_tar_path = os.path.join(extract_dest_dir.image_root, "extract.tar")
-            host_tar_path = os.path.join(extract_dest_dir.name, "extract.tar")
-
-            extract_container_name = uuid4()
-            # Mount host volume in container
-            volumes = [extract_dest_dir.name + ":" + extract_dest_dir.image_root]
-            command = ["tar", "-cf", image_tar_path] + volume_paths
-            docker_client.create_container(name=extract_container_name,
-                                           image="busybox:latest",
-                                           volumes=volumes,
-                                           command=command)
-            # Mount volumes from source container read-only
-            volumes_from = [container.name + ":ro"]
-            docker_client.start(container=extract_container_name,
-                                volumes_from=volumes_from)
-            extract_status = docker_client.wait(extract_container_name)
-            if not extract_status == 0:
-                raise ContainerExitError("Extract container did not run sucessfully. Exit code: {extract_status}".format(**locals()))
-
-            logger.info("Building image {persistimage} with volume data from {container} container".format(**locals()))
-            with nagoya.docker.build.BuildContext(persistimage, container.image, docker_client, quiet) as context:
-                context.include(host_tar_path, "/")
-
-    temp_system.remove_containers()
 
 #
 # Standard image build
