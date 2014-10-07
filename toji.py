@@ -10,7 +10,7 @@ import nagoya.cli.log
 import nagoya.cli.cfg
 import nagoya.toji
 
-default_config_paths = ["containers.cfg"]
+default_config_paths = ["cfg/containers.cfg"]
 boolean_config_options = ["multiple", "detach", "run_once"]
 
 # So any local callback modules referenced in the cfg can be loaded

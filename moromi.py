@@ -7,7 +7,7 @@ import nagoya.cli.log
 import nagoya.cli.cfg
 import nagoya.moromi
 
-default_config_paths = ["images.cfg"]
+default_config_paths = ["cfg/images.cfg"]
 boolean_config_options = ["commit"]
 
 def sc_build(args):
