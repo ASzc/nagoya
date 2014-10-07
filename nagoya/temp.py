@@ -42,7 +42,7 @@ class TempDirectory(object):
         if ".." in temp_rel_path:
             raise RelativePathError("Relative path '{temp_rel_path}' contains ..".format(**locals()))
 
-        temp_abs_path = os.path.join(self.name, temp_rel_path)
+        temp_abs_path = os.path.join(self.name, temp_rel_path.lstrip("/"))
 
         def make_parents(path):
             dirname = os.path.dirname(path)

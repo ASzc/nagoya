@@ -1,4 +1,5 @@
 from __future__ import print_function
+import sys
 import logging
 import json
 import re
@@ -63,7 +64,10 @@ def watch_build(stream, quiet):
                         latest_container = None
                     else:
                         if not quiet:
-                            print(line_text, end="", flush=True)
+                            print(line_text, end="")
+                            # Workaround lack of print flush parameter in Python 2 (even with future import)
+                            sys.stdout.flush()
+
 
             elif "status" in line_parsed:
                 logger.info(line_parsed["status"])

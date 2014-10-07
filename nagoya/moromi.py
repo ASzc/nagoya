@@ -129,6 +129,18 @@ def parse_dir_spec(spec, opt_name, image_name):
     else:
         raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
 
+# Workaround Python 2 not having the nonlocal keyword
+class Previous(object):
+    def __init__(self, initial):
+        self.value = initial
+
+    def __call__(self, new):
+        if self.value == new:
+            return True
+        else:
+            self.value = new
+            return False
+
 def build_image(image_name, image_config, client, quiet):
     logger.info("Generating files for {image_name}".format(**locals()))
     with nagoya.dockerext.build.BuildContext(image_name, image_config["from"], client, quiet) as context:
@@ -144,11 +156,10 @@ def build_image(image_name, image_config, client, quiet):
             res_paths = parse_dir_spec(lib_spec, "lib", image_name)
             context.include(res_paths.src_path, res_paths.dest_path)
 
-        previous_workdir = ""
+        previous_workdir = Previous("")
         def add_workdir(image_dir):
-            if not previous_workdir == image_dir:
+            if not previous_workdir(image_dir):
                 context.workdir(image_dir)
-                previous_workdir = image_dir
 
         for run_spec in optional_plural(image_config, "runs"):
             res_paths = parse_dir_spec(run_spec, "run", image_name)
