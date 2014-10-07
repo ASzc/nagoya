@@ -11,7 +11,7 @@ default_config_paths = ["images.cfg"]
 boolean_config_options = ["commit"]
 
 def sc_build(args):
-    config = nagoya.cli.cfg.read_config(args.config, default_config_paths, boolean_config_options)
+    config, _ = nagoya.cli.cfg.read_config(args.config, default_config_paths, boolean_config_options)
     return nagoya.moromi.build_images(config, args.images, args.quiet_build)
 
 def scargs_build(parser):
