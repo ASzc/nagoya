@@ -12,7 +12,7 @@ except:
 import docker
 import toposort
 
-import nagoya.docker.container
+import nagoya.dockerext.container
 
 logger = logging.getLogger("nagoya.toji")
 
@@ -65,7 +65,7 @@ class Toji(object):
 
     @classmethod
     def from_dict(cls, d, **kwargs):
-        containers = [nagoya.docker.container.Container.from_dict(name, sub) for name,sub in d.items()]
+        containers = [nagoya.dockerext.container.Container.from_dict(name, sub) for name,sub in d.items()]
         instance = cls(containers=containers, **kwargs)
         for container in instance.containers:
             container.client = instance.client
@@ -100,7 +100,7 @@ class Toji(object):
         return c
 
     def container(self, *args, **kwargs):
-        return self._container(nagoya.docker.container.Container, *args, **kwargs)
+        return self._container(nagoya.dockerext.container.Container, *args, **kwargs)
 
     # Run against containers in order of dependency groups
     def containers_exec(self, func, group_ordering=lambda x: x):
@@ -126,16 +126,16 @@ class Toji(object):
                         raise ex
 
     def init_containers(self):
-        self.containers_exec(nagoya.docker.container.Container.init)
+        self.containers_exec(nagoya.dockerext.container.Container.init)
 
     def start_containers(self):
-        self.containers_exec(nagoya.docker.container.Container.start)
+        self.containers_exec(nagoya.dockerext.container.Container.start)
 
     def stop_containers(self):
-        self.containers_exec(nagoya.docker.container.Container.stop, group_ordering=reversed)
+        self.containers_exec(nagoya.dockerext.container.Container.stop, group_ordering=reversed)
 
     def remove_containers(self):
-        self.containers_exec(nagoya.docker.container.Container.remove, group_ordering=reversed)
+        self.containers_exec(nagoya.dockerext.container.Container.remove, group_ordering=reversed)
 
 class TempToji(Toji):
     """
@@ -168,7 +168,7 @@ class TempToji(Toji):
         super(TempToji, self).__init__(containers=containers, client=client)
 
     def container(self, *args, **kwargs):
-        return self._container(nagoya.docker.container.TempContainer, *args, **kwargs)
+        return self._container(nagoya.dockerext.container.TempContainer, *args, **kwargs)
 
     def __enter__(self):
         return self

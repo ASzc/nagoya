@@ -5,7 +5,7 @@ import uuid
 import docker
 import requests
 
-logger = logging.getLogger("nagoya.docker")
+logger = logging.getLogger("nagoya.dockerext")
 
 class ContainerExitError(Exception):
     def __init__(self, code, logs):

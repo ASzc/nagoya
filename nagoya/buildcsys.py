@@ -4,7 +4,7 @@ import collections
 
 import nagoya.toji
 import nagoya.temp
-import nagoya.docker.container
+import nagoya.dockerext.container
 
 logger = logging.getLogger("nagoya.build")
 
@@ -77,7 +77,7 @@ class BuildContainerSystem(nagoya.toji.TempToji):
                 container_tar_path = os.path.join(container_volume_dir, "extract.tar")
                 host_tar_path = os.path.join(tdir.name, "extract.tar")
 
-                extract_container = nagoya.docker.container.TempContainer("busybox")
+                extract_container = nagoya.dockerext.container.TempContainer("busybox")
                 extract_container.client = self.client
                 extract_container.add_volume(tdir.name, container_volume_dir)
                 # TODO ^^^ host volumes working on Fedora depends on Docker#5910
@@ -87,7 +87,7 @@ class BuildContainerSystem(nagoya.toji.TempToji):
                 extract_container.wait(error_ok=False)
 
                 logger.info("Building image {image} with volume data from {container} container".format(**locals()))
-                with nagoya.docker.build.BuildContext(image, container.image, self.client, self.quiet) as context:
+                with nagoya.dockerext.build.BuildContext(image, container.image, self.client, self.quiet) as context:
                     context.include(host_tar_path, "/")
 
     def __exit__(self, exc, value, tb):

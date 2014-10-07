@@ -8,7 +8,7 @@ import logging
 
 import iniparse
 
-import nagoya.docker.container
+import nagoya.dockerext.container
 
 logger = logging.getLogger("kojicallbacks")
 
@@ -40,7 +40,7 @@ def mod_ini(path):
 def vol_copy(container, container_paths, target_host_dir):
     client = container.client
 
-    extract_container = nagoya.docker.container.TempContainer("busybox")
+    extract_container = nagoya.dockerext.container.TempContainer("busybox")
     container_volume_dir = "/" + extract_container.random_name()
     extract_container.client = client
     extract_container.add_volume(target_host_dir, container_volume_dir)

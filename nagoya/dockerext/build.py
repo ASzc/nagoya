@@ -8,7 +8,7 @@ import docker
 
 import nagoya.temp
 
-logger = logging.getLogger("nagoya.docker")
+logger = logging.getLogger("nagoya.dockerext")
 
 class BuildFailed(Exception):
     """

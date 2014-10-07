@@ -8,7 +8,7 @@ import collections
 
 import docker
 
-import nagoya.docker.build
+import nagoya.dockerext.build
 import nagoya.buildcsys
 
 logger = logging.getLogger("nagoya.build")
@@ -131,7 +131,7 @@ def parse_dir_spec(spec, opt_name, image_name):
 
 def build_image(image_name, image_config, client, quiet):
     logger.info("Generating files for {image_name}".format(**locals()))
-    with nagoya.docker.build.BuildContext(image_name, image_config["from"], client, quiet) as context:
+    with nagoya.dockerext.build.BuildContext(image_name, image_config["from"], client, quiet) as context:
         context.maintainer(image_config["maintainer"])
 
         for port in optional_plural(image_config, "exposes"):
