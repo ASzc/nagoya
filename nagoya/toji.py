@@ -137,7 +137,7 @@ class Toji(object):
     def remove_containers(self):
         self.containers_exec(nagoya.docker.container.Container.remove, group_ordering=reversed)
 
-def TempToji(Toji):
+class TempToji(Toji):
     """
     Allows the use of "with ... as" blocks for a temporary Toji instance
     """
