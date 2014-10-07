@@ -70,18 +70,6 @@ class NetworkLink(object):
     def __str__(self):
         return ":".join(self.api_formatted())
 
-class ProvidedCallbacks(object):
-    @staticmethod
-    def show_network(container):
-        container_info = container.client.inspect_container(container=container.name)
-        try:
-            net = container_info["NetworkSettings"]
-            a = net["IPAddress"]
-            p = ", ".join(net["Ports"].keys())
-            logger.info("Container {0} at Address: {1} Ports: {2}".format(container, a, p))
-        except KeyError as e:
-            logger.error("Could not read network information for container {0}: {1}".format(container, e))
-
 class Callspec(object):
     valid_events = {"init", "create", "start", "stop", "remove"}
     valid_event_parts = {"pre", "post"}
@@ -101,20 +89,12 @@ class Callspec(object):
         event_spec, cb_coord = text.split(":")
         event_part, event = event_spec.split("_")
 
-        # Qualified coordinate
-        if "." in cb_coord:
-            if cb_coord.startswith("."):
-                raise ValueError("Qualified callback coordinate '{0}' cannot be relative".format(cb_coord))
-            else:
-                module, cb_name = cb_coord.rsplit(".", 1)
-                cb_module = importlib.import_module(module)
-                callback_func = getattr(cb_module, cb_name)
-        # Unqualified => Provided
+        if cb_coord.startswith("."):
+            raise ValueError("Callback coordinate '{0}' cannot be relative".format(cb_coord))
         else:
-            if cb_coord.startswith("_"):
-                raise ValueError("Unqualified callback coordinate '{0}' cannot start with an underscore".format(cb_coord))
-            else:
-                callback_func = getattr(ProvidedCallbacks, cb_coord)
+            module, cb_name = cb_coord.rsplit(".", 1)
+            cb_module = importlib.import_module(module)
+            callback_func = getattr(cb_module, cb_name)
 
         return cls(event_part, event, callback_func)
 

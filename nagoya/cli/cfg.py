@@ -10,7 +10,7 @@ def read_config(paths, default_paths, boolean_options=[]):
         paths = default_paths
 
     config = configparser.ConfigParser()
-    config.read(map(os.path.expanduser, paths))
+    successful_paths = config.read(map(os.path.expanduser, paths))
 
     # Convert to dict, as 2.x configparser doesn't implement MutableMapping
     dictionary = dict()
@@ -23,3 +23,5 @@ def read_config(paths, default_paths, boolean_options=[]):
             else:
                 value = config.get(section, option)
             dictionary[section][option] = value
+
+    return (dictionary, successful_paths)

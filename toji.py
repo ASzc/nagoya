@@ -2,6 +2,9 @@
 # PYTHON_ARGCOMPLETE_OK
 # Will run in Python 2 or Python 3
 
+import sys
+import os
+
 import nagoya.cli.args
 import nagoya.cli.log
 import nagoya.cli.cfg
@@ -10,8 +13,16 @@ import nagoya.toji
 default_config_paths = ["containers.cfg"]
 boolean_config_options = ["multiple", "detach", "run_once"]
 
+# So any local callback modules referenced in the cfg can be loaded
+def _add_cfg_dirs_to_path(cfg_paths):
+    for cfg_path in cfg_paths:
+        cfg_dir = os.path.dirname(cfg_path)
+        sys.path.append(cfg_dir)
+
 def _config_dict(args):
-    return nagoya.cli.cfg.read_config(args.config, default_config_paths, boolean_config_options)
+    d, successful_paths = nagoya.cli.cfg.read_config(args.config, default_config_paths, boolean_config_options)
+    _add_cfg_dirs_to_path(successful_paths)
+    return d
 
 def sc_init(args):
     toji = nagoya.toji.Toji.from_dict(_config_dict(args))
