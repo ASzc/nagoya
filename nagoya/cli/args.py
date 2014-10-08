@@ -22,8 +22,9 @@ class ConfigSectionsCompleter(object):
         self.default_config_paths = [os.path.expanduser(p) for p in default_config_paths]
         self.config_arg_name = config_arg_name
 
-    def __call__(self, prefix, action, parser, parsed_args):
-        if self.config_arg_name in parsed_args:
+    def __call__(self, prefix, action, parsed_args):
+        parsed_args = vars(parsed_args)
+        if self.config_arg_name in parsed_args and parsed_args[self.config_arg_name]:
             config_paths = parsed_args.config
         else:
             config_paths = self.default_config_paths
