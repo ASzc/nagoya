@@ -34,12 +34,12 @@ def mod_ini(path):
     with open(path, "w") as f:
         print(ini_data, end="", file=f)
 
-# TODO Might be able to do this easier with docker exec in 1.3.0 ?
-# This won't work until Docker pull #5910 (selinux host volumes) is merged
-# potential workaround would be to run tar command outputting to stdout, and attaching. Doesn't seem to work however.
+# Can't extract a container's volume data with API copy command (yet).
+# Alternative is to use a temp container mounting a host volume
 def vol_copy(container, container_paths, target_host_dir):
     client = container.client
 
+    # TODO Might be able to do this easier with docker exec in 1.3.0 ?
     extract_container = nagoya.dockerext.container.TempContainer("busybox")
     container_volume_dir = "/" + extract_container.random_name()
     extract_container.client = client
@@ -85,13 +85,12 @@ def update_config_profile(container):
         i.dockerkoji.ca = local_ca_cert
         i.dockerkoji.serverca = local_ca_cert
 
-
 def extract_credentials(container):
-    container_cred_dir = "/etc/pki/koji/"
-    # Can't extract a container's volume data with API copy command (yet).
-    # Alternative is to use a temp container mounting a host volume
+    container_cred_dir = "/etci/pki/koji/"
+    container_user_pem = os.path.join(container_cred_dir, "kojiadmin.pem")
+    container_ca_cert = os.path.join(container_cred_dir, "koji_ca.crt")
     # TODO enable when working
-    #vol_copy(container, container_cred_dir, local_cred_dir)
+    #vol_copy(container, [container_user_pem, container_ca_cert], local_cred_dir)
     pass
 
 def cleanup_credentials(container):
