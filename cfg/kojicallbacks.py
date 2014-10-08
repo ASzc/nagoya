@@ -86,7 +86,7 @@ def update_config_profile(container):
         i.dockerkoji.serverca = local_ca_cert
 
 def extract_credentials(container):
-    container_cred_dir = "/etci/pki/koji/"
+    container_cred_dir = "/etc/pki/koji/"
     container_user_pem = os.path.join(container_cred_dir, "kojiadmin.pem")
     container_ca_cert = os.path.join(container_cred_dir, "koji_ca.crt")
     # TODO enable when working
