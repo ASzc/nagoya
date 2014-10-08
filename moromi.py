@@ -2,9 +2,12 @@
 # PYTHON_ARGCOMPLETE_OK
 # Will run in Python 2 or Python 3
 
+import docker
+
 import nagoya.cli.args
 import nagoya.cli.log
 import nagoya.cli.cfg
+import nagoya.dockerext.build
 import nagoya.moromi
 
 default_config_paths = ["cfg/images.cfg"]
@@ -21,7 +24,8 @@ def scargs_build(parser):
         imgs.completer = nagoya.cli.args.ConfigSectionsCompleter(default_config_paths)
 
 def sc_clean(args):
-    pass
+    c = docker.Client()
+    nagoya.dockerext.build.clean_untagged_images(c)
 
 if __name__ == "__main__":
     parser = nagoya.cli.args.create_default_argument_parser(description="Build docker images")

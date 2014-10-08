@@ -80,6 +80,21 @@ def watch_build(stream, quiet):
     if failed:
         raise BuildFailed(latest_container, error_lines)
 
+def get_untagged_images(docker_client):
+    for image in docker_client.images():
+        if image["RepoTags"] == ["<none>:<none>"]:
+            yield image
+
+def clean_untagged_images(docker_client):
+    for image in get_untagged_images(docker_client):
+        image_id = image["Id"]
+        short_id = image_id[:8]
+        try:
+            docker_client.remove_image(image_id)
+            logger.info("Removed image {short_id}".format(**locals()))
+        except docker.errors.APIError as e:
+            logger.error("Couldn't remove image {short_id}: {e}".format(**locals()))
+
 def cleanup_container(docker_client, container_id):
     # Make sure container is removed
     try:
@@ -95,25 +110,22 @@ def cleanup_container(docker_client, container_id):
         # Make sure any untagged image associated with the container is removed
         if "Image" in container:
             image_id = container["Image"]
-            found = False
             try:
+                found = False
                 # API's inspect_image doesn't return data with RepoTags for some unknown reason
-                for image in docker_client.images():
+                for image in get_untagged_images(docker_client):
                     if image["Id"] == image_id:
                         found = True
-                        if image["RepoTags"] == ["<none>:<none>"]:
-                            try:
-                                docker_client.remove_image(image_id)
-                                logger.info("Removed image {image_id} for container {container_id}".format(**locals()))
-                            except docker.errors.APIError as e:
-                                logger.debug("Couldn't remove image {image_id} for container {container_id}: {e}".format(**locals()))
-                        else:
-                            logger.debug("Image {image_id} for container {container_id} wasn't untagged".format(**locals()))
+                        try:
+                            docker_client.remove_image(image_id)
+                            logger.info("Removed image {image_id} for container {container_id}".format(**locals()))
+                        except docker.errors.APIError as e:
+                            logger.debug("Couldn't remove image {image_id} for container {container_id}: {e}".format(**locals()))
                         break
+                if not found:
+                    logger.debug("Image {image_id} for container {container_id} wasn't untagged".format(**locals()))
             except docker.errors.APIError as e:
                 logger.debug("Error when listing images: {e}".format(**locals()))
-            if not found:
-                logger.debug("Image {image_id} for container {container_id} doesn't exist".format(**locals()))
         else:
             logger.debug("Container {container_id} doesn't have an image".format(**locals()))
     except docker.errors.APIError as e:
