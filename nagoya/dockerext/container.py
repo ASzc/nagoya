@@ -229,6 +229,7 @@ class Container(object):
                 try:
                     self.wait(timeout=20, error_ok=True)
                     logger.info("Stopped container {0}".format(self))
+                    self._process_callbacks("post", "stop")
                 except requests.exceptions.Timeout:
                     self.client.kill(container=self.name, signal=9)
                     try:
