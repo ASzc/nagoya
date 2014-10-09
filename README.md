@@ -81,19 +81,21 @@ Name | Value
 `section` | The name of the current section
 `secdir` | The subdirectory named `section` in `cfgdir`
 
-Options with plural key names allow you to specify multiple values, seperated by newlines.
+Options with plural key names allow you to specify multiple values, separated by newlines.
 
 ## Building Images With `moromi`
 
 ### Standard images
 
-Standard image builds use a normal Dockerfile build context on the backend, but some convinence features are provided to reduce code duplication. It's assumed that run/entrypoint commands always use files not already in the image to increase succinctness.
+Standard image builds use a normal Dockerfile build context on the backend, but some convenience features are provided to reduce code duplication. It's assumed that run/entrypoint commands always use files not already in the image to increase succinctness.
 
 ### Images from a temporary container system
 
-The best way to ensure minimal lead time when initalising containers is to include as much of the application as possible in the images. While many customisations can easily be accomplished through normal image layering, some configuration is best done against a live system. Nagoya allows you to construct a temporary system of containers, execute commands against it, then save the changes into new images.
+The best way to ensure minimal lead time when initialising containers is to include as much of the application as possible in the images. While many customisations can easily be accomplished through normal image layering, some configuration is best done against a live system. Nagoya allows you to construct a temporary system of containers, execute commands against it, then save the changes into new images.
 
 Many container systems use volumes to store data. Unfortunately, Docker's [`commit`](https://docs.docker.com/reference/commandline/cli/#commit) command doesn't include volume data in the saved image. Nagoya offers "persist" as an alternative that works around the `commit` command's limitations. Persisting a container will cause a child image to be built from the container's image, with the contents of the volumes added. Note that changes outside of the volumes won't be saved, but this shouldn't be an issue if you use [data volume containers](https://docs.docker.com/userguide/dockervolumes/#creating-and-mounting-a-data-volume-container).
+
+**Note:** Docker host volumes currently don't work on systems with selinux when it is in enforcing mode. This breaks persist builds. Fix is pending in [Docker Pull #5910](https://github.com/docker/docker/pull/5910).
 
 ### Configuration
 
@@ -132,7 +134,15 @@ Links has some unique syntax to describe the temporary container. The first comp
 
 ## Container Systems With `toji`
 
-TODO Automatic docker-level (links, volumes, etc.) dependency order via topological sorting. If a service running inside a container needs a service in another container, then that level of guarantee is not provided by toji.
+### Docker-level Dependencies
+
+Dependencies between configured containers are found in the Volume_From and Link options. Commands will be executed against the group of containers with respect to this partial ordering, so that Docker doesn't produce errors.
+
+Nagoya doesn't provide any guarantees for the ordering of dependencies inside the containers themselves. If a program running inside a container needs a program in another container, then the first program must wait for the second to be ready with its own polling or messaging system.
+
+### Multithreading
+
+To deliver the fastest execution time possible for the commands (particularly start), multithreading is used. Some commands on the Docker backend (like remove) use global locks, so they defeat the multithreading in the current version of Docker.
 
 ### Configuration
 
@@ -153,9 +163,7 @@ Callbacks | Execute additional functions on some events. See [section](#callback
 
 ### Callbacks
 
-TODO
-
-Any exceptions thrown by the callbacks will not be caught.
+Callbacks offer the ability to plug-in additional domain-specific functionality. You can register any function from any module to an event. The directory of the configuration file is added to the Python path, so you may place the plugin modules there. The function will be called with one parameter: the calling container object, as defined in `nagoya.dockerext.container`. Any exceptions thrown by the callbacks will not be caught, and will cause the program to exit.
 
 Valid events:
 Name | Description
@@ -172,6 +180,8 @@ pre_remove | Called before executing docker command
 post_remove | Called after executing docker command
 
 ### API
+
+`toji` also allows you to programmatically define container systems. For an example, look at how `moromi` uses it for temporary system image builds.
 
 ## Other Topics
 
