@@ -42,7 +42,7 @@ class ConfigSectionsCompleter(object):
     def __call__(self, prefix, action, parsed_args):
         parsed_args = vars(parsed_args)
         if self.config_arg_name in parsed_args and parsed_args[self.config_arg_name]:
-            config_paths = parsed_args.config
+            config_paths = parsed_args[self.config_arg_name]
         else:
             config_paths = self.default_config_paths
         config = configparser.ConfigParser()
