@@ -170,6 +170,10 @@ def build_image(image_name, image_config, client, quiet):
             res_paths = parse_dir_spec(lib_spec, "lib", image_name)
             context.include(res_paths.src_path, res_paths.dest_path)
 
+        for env_spec in optional_plural(image_config, "envs"):
+            k,v = env_spec.split("=", 1)
+            context.env(k, v)
+
         previous_workdir = Previous("")
         def add_workdir(image_dir):
             if not previous_workdir(image_dir):

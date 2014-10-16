@@ -203,6 +203,9 @@ class BuildContext(nagoya.temp.TempDirectory):
         # Add to image from context dir
         self.add(context_rel_path, image_path)
 
+    def env(self, key, value):
+        self._write_df("ENV", key, value)
+
     def run(self, image_path, args=[]):
         self._write_df("RUN", json.dumps([image_path] + args))
 
