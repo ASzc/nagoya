@@ -120,25 +120,25 @@ class Container(object):
     def random_name():
         return str(uuid.uuid4())
 
-    def __init__(self, image, name=None, detach=True, volumes=None,
-                 volumes_from=None, links=None, multiple=False, run_once=False,
-                 entrypoint=None, working_dir=None, callbacks=None):
+    def __init__(self, image, name=None, detach=True, entrypoint=None,
+                 run_once=False, working_dir=None, callbacks=None,
+                 links=None, volumes=None, volumes_from=None):
 
         # For mutable defaults
         def mdef(candidate, default):
             return candidate if candidate is not None else default
 
-        self.name = mdef(name, self.random_name())
         self.image = image
+        self.name = mdef(name, self.random_name())
         self.detach = detach
-        self.volumes = mdef(volumes, [])
-        self.volumes_from = mdef(volumes_from, [])
-        self.links = mdef(links, [])
-        self.multiple = multiple
-        self.run_once = run_once
         self.entrypoint = entrypoint
+        self.run_once = run_once
         self.working_dir = working_dir
         self.callbacks = mdef(callbacks, [])
+        self.envs =  mdef(envs, [])
+        self.links = mdef(links, [])
+        self.volumes = mdef(volumes, [])
+        self.volumes_from = mdef(volumes_from, [])
 
     @classmethod
     def from_dict(cls, name, d):
