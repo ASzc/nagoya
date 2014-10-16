@@ -220,6 +220,7 @@ class Container(object):
                                          volumes=self.volumes_api_formatted(),
                                          entrypoint=self.entrypoint,
                                          working_dir=self.working_dir,
+                                         environment=self.envs_api_formatted(),
                                          command=[""])
             logger.info("Created container {0}".format(self))
             self._process_callbacks("post", "create")
@@ -317,6 +318,9 @@ class Container(object):
 
         return deps
 
+    def envs_api_formatted(self):
+        return [e.api_formatted() for e in self.envs]
+
     def volumes_api_formatted(self):
         return [v.api_formatted() for v in self.volumes]
 
@@ -325,6 +329,11 @@ class Container(object):
 
     def links_api_formatted(self):
         return [l.api_formatted() for l in self.links]
+
+    def add_env(self, *args, **kwargs):
+        env = Env(*args, **kwargs)
+        self.envs.append(env)
+        return env
 
     def add_volume(self, *args, **kwargs):
         link = VolumeLink(*args, **kwargs)

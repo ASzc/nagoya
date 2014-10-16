@@ -93,6 +93,10 @@ def build_container_system(image_name, image_config, client, quiet):
             bcs.root.working_dir = res_paths.dest_dir
             bcs.volume_include(bcs.root, res_paths.src_path, res_paths.dest_path, executable=True)
 
+        for env_spec in optional_plural(image_config, "envs"):
+            k,v = env_spec.split("=", 1)
+            bcs.root.add_env(k, v)
+
         for lib_spec in optional_plural(image_config, "libs"):
             res_paths = parse_dir_spec(lib_spec, "lib", image_name)
             bcs.volume_include(bcs.root, res_paths.src_path, res_paths.dest_path)
