@@ -17,11 +17,7 @@
 
 import logging
 import sys
-try:
-    import concurrent.futures as futures
-except:
-    # Fall back to local download
-    import futures
+import concurrent.futures as futures
 
 import docker
 import toposort

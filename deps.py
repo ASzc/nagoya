@@ -144,8 +144,12 @@ files = [ FileDep(bitbucket_file, "ericvsmith", "toposort", "1.1", "toposort.py"
           FileDep(bitbucket_file,  "gutworth", "six", "1.8.0", "six.py") ]
 
 dirs = [ SubdirDep(github_tar, "docker", "docker-py", "0.5.0", ["docker"]),
-         SubdirDep(github_tar, "kennethreitz", "requests", "v2.2.1", ["requests"]),
-         SubdirDep(googlecode_tar, "", "pythonfutures", "2.2.0", ["futures"]) ]
+         SubdirDep(github_tar, "kennethreitz", "requests", "v2.2.1", ["requests"]) ]
+
+try:
+    import concurrent.futures
+except ImportError as e:
+    dirs.append(SubdirDep(googlecode_tar, "", "pythonfutures", "2.2.0", ["concurrent"]))
 
 #
 # Main
