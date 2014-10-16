@@ -19,6 +19,7 @@ import logging
 import os
 import re
 import collections
+import itertools
 
 import docker
 
@@ -75,7 +76,7 @@ def parse_link_spec(spec, opt_name, image_name):
 
 ContainerWithDest = collections.namedtuple("ContainerWithDest", ["container", "destimage"])
 
-def build_container_system(image_name, image_config, client, quiet):
+def build_container_system(image_name, image_config, client, quiet, extra_env):
     logger.info("Creating container system for {image_name}".format(**locals()))
 
     with nagoya.buildcsys.BuildContainerSystem(root_image=image_config["from"],
@@ -93,7 +94,7 @@ def build_container_system(image_name, image_config, client, quiet):
             bcs.root.working_dir = res_paths.dest_dir
             bcs.volume_include(bcs.root, res_paths.src_path, res_paths.dest_path, executable=True)
 
-        for env_spec in optional_plural(image_config, "envs"):
+        for env_spec in itertools.chain(optional_plural(image_config, "envs"), extra_env):
             k,v = env_spec.split("=", 1)
             bcs.root.add_env(k, v)
 
@@ -159,7 +160,7 @@ class Previous(object):
             self.value = new
             return False
 
-def build_image(image_name, image_config, client, quiet):
+def build_image(image_name, image_config, client, quiet, extra_env):
     logger.info("Generating files for {image_name}".format(**locals()))
     with nagoya.dockerext.build.BuildContext(image_name, image_config["from"], client, quiet) as context:
         context.maintainer(image_config["maintainer"])
@@ -174,7 +175,7 @@ def build_image(image_name, image_config, client, quiet):
             res_paths = parse_dir_spec(lib_spec, "lib", image_name)
             context.include(res_paths.src_path, res_paths.dest_path)
 
-        for env_spec in optional_plural(image_config, "envs"):
+        for env_spec in itertools.chain(optional_plural(image_config, "envs"), extra_env):
             k,v = env_spec.split("=", 1)
             context.env(k, v)
 
@@ -200,7 +201,7 @@ def build_image(image_name, image_config, client, quiet):
 # Build images
 #
 
-def build_images(config, images, quiet):
+def build_images(config, images, quiet, env):
     num_img = len(images)
     logger.info("Building {0} image{1}".format(num_img, "s" if num_img > 1 else ""))
 
@@ -212,8 +213,8 @@ def build_images(config, images, quiet):
         image_config = config[image]
 
         if not container_system_option_names.isdisjoint(image_config.keys()):
-            build_container_system(image, image_config, docker_client, quiet)
+            build_container_system(image, image_config, docker_client, quiet, env)
         else:
-            build_image(image, image_config, docker_client, quiet)
+            build_image(image, image_config, docker_client, quiet, env)
 
     logger.info("Done")

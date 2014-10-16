@@ -32,10 +32,11 @@ boolean_config_options = ["commit"]
 
 def sc_build(args):
     config, _ = nagoya.cli.cfg.read_config(args.config, default_config_paths, boolean_config_options)
-    return nagoya.moromi.build_images(config, args.images, args.quiet_build)
+    return nagoya.moromi.build_images(config, args.images, args.quiet_build, args.env)
 
 def scargs_build(parser):
     parser.add_argument("-b", "--quiet-build", action="store_true", help="Do not print the builds' stdout/stderr")
+    parser.add_argument("-e", "--env", metavar="K=V", action="append", default=[], help="Set a variable in the builds' environment")
     imgs = parser.add_argument("images", metavar="IMAGE", nargs="+", help="Image to build")
     if nagoya.cli.args.argcomplete_available:
         imgs.completer = nagoya.cli.args.ConfigSectionsCompleter(default_config_paths)
