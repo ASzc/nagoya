@@ -109,6 +109,7 @@ From | Parent image
 Maintainer | A name and email address
 Runs | Files to execute on the container during the build. See [subsection](#resources)
 Libs | Additional files/directories. See [subsection](#resources)
+Envs | Assign values to environment variables
 Exposes | Port numbers
 Entrypoint | File to execute by default when a container starts
 
