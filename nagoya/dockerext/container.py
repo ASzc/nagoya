@@ -31,6 +31,22 @@ class ContainerExitError(Exception):
         message = "Error code {0}, Logs:\n{1}".format(code, logs)
         super(ContainerExitError, self).__init__(message)
 
+class Env(object):
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+
+    @classmethod
+    def from_text(cls, text):
+        k,v = text.split("=", 1)
+        return cls(k, v)
+
+    def api_formatted(self):
+        return self.key + "=" + self.value
+
+    def __str__(self):
+        return self.api_formatted()
+
 class VolumeLink(object):
     def __init__(self, host_path, container_path):
         self.host_path = host_path
@@ -121,7 +137,7 @@ class Container(object):
         return str(uuid.uuid4())
 
     def __init__(self, image, name=None, detach=True, entrypoint=None,
-                 run_once=False, working_dir=None, callbacks=None,
+                 run_once=False, working_dir=None, callbacks=None, envs=None,
                  links=None, volumes=None, volumes_from=None):
 
         # For mutable defaults
@@ -161,6 +177,7 @@ class Container(object):
                      "run_once" : copy,
                      "working_dir" : copy,
                      "callbacks" : plural_ft(Callspec),
+                     "envs" : plural_ft(Env),
                      "links" : plural_ft(NetworkLink),
                      "volumes" : plural_ft(VolumeLink),
                      "volumes_from" : plural_ft(VolumeFromLink)}
