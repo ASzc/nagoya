@@ -119,5 +119,8 @@ class BuildContainerSystem(nagoya.toji.TempToji):
 
             if exc is None:
                 self._build()
+        except Exception as e:
+            logger.error("Exception raised during build, running cleanup before raising")
+            raise
         finally:
             super(BuildContainerSystem, self).__exit__(exc, value, tb)

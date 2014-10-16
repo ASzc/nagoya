@@ -184,4 +184,8 @@ class TempToji(Toji):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is None:
+            logger.debug("Executing cleanup function")
+        else:
+            logger.error("Exception raised within context, cleaning up before raising")
         self.cleanup(self)
