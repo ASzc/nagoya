@@ -148,22 +148,26 @@ class Container(object):
         for required in ["image"]:
             params[required] = d[required]
 
-        for optional in ["multiple", "detach", "volumes_from", "links",
-                         "run_once", "volumes", "entrypoint", "working_dir",
-                         "callbacks"]:
-            if optional in d:
-                value = d[optional]
+        def copy(key):
+            return d[key]
+        def plural_ft(to_type):
+            def makelist(key):
+                lines = map(str.strip, d[key].split("\n"))
+                return [to_type.from_text(l) for l in lines]
+            return makelist
 
-                if optional in ["volumes", "volumes_from", "links", "callbacks"]:
-                    lines = map(str.strip, value.split("\n"))
-                    types = {"volumes" : VolumeLink,
-                              "volumes_from" : VolumeFromLink,
-                              "links" : NetworkLink,
-                              "callbacks" : Callspec}
-                    t = types[optional]
-                    params[optional] = [t.from_text(l) for l in lines]
-                else:
-                    params[optional] = value
+        optionals = {"detach" : copy,
+                     "entrypoint" : copy,
+                     "run_once" : copy,
+                     "working_dir" : copy,
+                     "callbacks" : plural_ft(Callspec),
+                     "links" : plural_ft(NetworkLink),
+                     "volumes" : plural_ft(VolumeLink),
+                     "volumes_from" : plural_ft(VolumeFromLink)}
+
+        for optional,valuefunc in optionals.items():
+            if optional in d:
+                params[optional] = valuefunc(optional)
 
         return cls(**params)
 
