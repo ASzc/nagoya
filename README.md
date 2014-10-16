@@ -156,13 +156,14 @@ Key | Value
 --- | -----
 Image | The image to use
 Detach | After starting the container, wait for it to finish if false. Boolean.
+Entrypoint | Override the image's entrypoint
 Run_Once | Ignore start commands if the container has been started previously if true. Boolean.
 Working_Dir | Override the image's working directory
-Entrypoint | Override the image's entrypoint
+Callbacks | Execute additional functions on some events. See [section](#callbacks)
+Envs | Assign values to environment variables
+Links | Create a network link, with hostname alias
 Volumes | Set volumes for the container not specified in the image
 Volumes_From | Use volumes from other containers, with mode parameters
-Links | Create a network link, with hostname alias
-Callbacks | Execute additional functions on some events. See [section](#callbacks)
 
 ### Callbacks
 
