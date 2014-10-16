@@ -63,7 +63,7 @@ A full set of files for Koji is available in the `cfg` directory.
 
 Nagoya will run on Python 2.7 or Python 3.3 and above.
 
-Nagoya depends directly on `docker-py>=0.5.0` and `toposort>=1.1`, with some transitive dependencies. If you don't have them installed on your system:
+Nagoya depends directly on `docker-py>=0.5.0` and `toposort>=1.1`, with some transitive dependencies. Only for Python 2, `futures>=2.2.0` is required (Python 3.2+ has it as a standard library). If you don't have the dependencies installed on your system:
 
 * install them with `pip install` (note you have to run pip for each version of Python you want to use), or
 * install them with your system package manager (if the correct versions are available), or
