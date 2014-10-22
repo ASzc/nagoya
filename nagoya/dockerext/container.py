@@ -18,6 +18,7 @@
 import importlib
 import logging
 import uuid
+import pprint
 
 import docker
 import requests
@@ -25,10 +26,11 @@ import requests
 logger = logging.getLogger("nagoya.dockerext")
 
 class ContainerExitError(Exception):
-    def __init__(self, code, logs):
+    def __init__(self, code, logs, inspect):
         self.code = code
         self.logs = logs
-        message = "Error code {0}, Logs:\n{1}".format(code, logs)
+        self.inspect = inspect
+        message = "Error code {0}\n\nLogs:\n{1}\n\nInspect:\n{2}\n".format(code, logs, pprint.pformat(inspect))
         super(ContainerExitError, self).__init__(message)
 
 class Env(object):
@@ -305,7 +307,7 @@ class Container(object):
         if error_ok or status == 0:
             return status
         else:
-            raise ContainerExitError(status, self.client.logs(self.name))
+            raise ContainerExitError(status, self.client.logs(self.name), self.client.inspect_container(self.name))
 
     def dependency_names(self):
         deps = set()
