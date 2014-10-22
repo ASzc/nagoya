@@ -206,7 +206,7 @@ def build_images(config, images, quiet, env):
     num_img = len(images)
     logger.info("Building {0} image{1}".format(num_img, "s" if num_img > 1 else ""))
 
-    docker_client = docker.Client(timeout=5)
+    docker_client = docker.Client(timeout=10)
     docker_client.ping()
 
     for image in images:
