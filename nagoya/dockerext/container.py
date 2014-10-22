@@ -50,9 +50,10 @@ class Env(object):
         return self.api_formatted()
 
 class VolumeLink(object):
-    def __init__(self, host_path, container_path):
+    def __init__(self, host_path, container_path, read_only=False):
         self.host_path = host_path
         self.container_path = container_path
+        self.read_only = read_only
 
     @classmethod
     def from_text(cls, text):
@@ -64,14 +65,11 @@ class VolumeLink(object):
             h, c = s
         return cls(h, c)
 
-    def api_formatted(self):
-        if self.host_path is None:
-            self.container_path
-        else:
-            return self.host_path + ":" + self.container_path
+    def bind_formatted(self):
+        return {self.host_path: {"bind": self.container_path, "ro": self.read_only}}
 
     def __str__(self):
-        return self.api_formatted()
+        return ":".join([self.container_path, self.host_path, self.read_only])
 
 class VolumeFromLink(object):
     def __init__(self, container_name, mode):
@@ -219,7 +217,7 @@ class Container(object):
             self.client.create_container(name=self.name,
                                          image=self.image,
                                          detach=self.detach, # Doesn't seem to do anything
-                                         volumes=self.volumes_api_formatted(),
+                                         volumes=self.volumes_api_container_paths(),
                                          entrypoint=self.entrypoint,
                                          working_dir=self.working_dir,
                                          environment=self.envs_api_formatted(),
@@ -237,6 +235,7 @@ class Container(object):
             self._process_callbacks("pre", "start")
             logger.debug("Attempting to start container {0}".format(self))
             self.client.start(container=self.name,
+                              binds=self.volumes_api_binds(),
                               links=self.links_api_formatted(),
                               volumes_from=self.volumes_from_api_formatted())
             if not self.detach:
@@ -323,8 +322,14 @@ class Container(object):
     def envs_api_formatted(self):
         return [e.api_formatted() for e in self.envs]
 
-    def volumes_api_formatted(self):
-        return [v.api_formatted() for v in self.volumes]
+    def volumes_api_container_paths(self):
+        return [v.container_path for v in self.volumes]
+
+    def volumes_api_binds(self):
+        binds = dict()
+        for v in self.volumes:
+            binds.update(v.bind_formatted())
+        return binds
 
     def volumes_from_api_formatted(self):
         return [v.api_formatted() for v in self.volumes_from]
