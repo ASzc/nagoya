@@ -27,7 +27,8 @@ def read_one(path, boolean_options=[]):
     successful = config.read(path)
     if successful:
         format_vars = dict()
-        format_vars["cfgdir"] = os.path.dirname(path)
+        dirname = os.path.dirname(path)
+        format_vars["cfgdir"] = "." if dirname == "" else dirname
 
         d = dict()
         for section in config.sections():
