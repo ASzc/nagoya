@@ -117,23 +117,24 @@ Container system options:
 
 Key | Value
 --- | -----
-Commit | Commit the image if true. Boolean.
-Entrypoint | Use a new entrypoint file. Mounts host volumes at the required paths in the container.
-Libs | Same as the standard option, but mounts host volumes at the required paths in the container.
-Volumes_From | See [subsection](#volumes_from)
-Links | See [subsection](#links)
+System | Path to the `toji` configuration file defining the temporary container system
+Root | The name of the root container in the temporary container system. Entrypoint and Libs affect this container, and commit/persist tasks are run after it exits.
+Entrypoint | Use a new entrypoint file for root. Mounts host volumes at the required paths in the container.
+Libs | Additional files/directories for root. Mounts host volumes at the required paths in the container.
+Commits | Commit containers to image names.
+Persists | Persist containers to image names.
 
 #### Resources
 
 The Runs, Libs, and Entrypoint options take files/directories from the host filesystem and add them to the image. The first component of a line gives the complete host path to the source. The second component is either `at` or `in`. If `at`, then the third component must be the complete container path to copy the source to. If `in`, then the third component must be the path to the container directory to copy the source into.
 
-#### Volumes_From
+#### Commits
 
-Volumes_From has some unique syntax to describe the temporary container. The first component of a line is the name of the image to create a container from. The second component is either `discard`, followed by the end of the line, or `persist to` followed by the destination image name.
+The commits option takes lines that define which containers should be committed after the root container has exited. The first component of a line is the name of the container (as defined in the system configuration file). The second component is `to` followed by the name the image should be tagged with.
 
-#### Links
+#### Persists
 
-Links has some unique syntax to describe the temporary container. The first component of of a line in the name of the image to create a container from. The second component is `alias`, followed by the name of the hostname to use to represent the created container. The third component is either `discard` followed by the end of the line, or `commit to` followed by the destination image.
+The persists option takes lines that define which containers should be persisted after the root container has exited. The first component of a line is the name of the container (as defined in the system configuration file). The second component is `to` followed by the name the image should be tagged with.
 
 ## Container Systems With `toji`
 
