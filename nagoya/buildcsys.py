@@ -25,7 +25,7 @@ import nagoya.dockerext.container
 
 logger = logging.getLogger("nagoya.build")
 
-ContrainerAndDest = collections.namedtuple("ContainerAndDest", ["container", "dest_image"])
+ContainerAndDest = collections.namedtuple("ContainerAndDest", ["container", "dest_image"])
 
 class BuildContainerSystem(nagoya.toji.TempToji):
     """
@@ -33,22 +33,23 @@ class BuildContainerSystem(nagoya.toji.TempToji):
     multiple ways.
     """
 
-    def __init__(self, root_image, containers=None, client=None, cleanup=None, quiet=False):
+    def __init__(self, containers=None, client=None, cleanup=None, quiet=False):
         super(BuildContainerSystem, self).__init__(containers=containers, client=client, cleanup=cleanup)
-        self.root = self._root(root_image)
         self.to_commit = []
         self.to_persist = []
         self.temp_vol_dirs = dict()
         self.quiet = quiet
 
-    def _root(self, image_name):
-        return self.container(image=image_name, detach=True)
+    def root(self, container_name):
+        self.root = next((c for c in self.containers if c.name == container_name), "None")
+        if self.root is None:
+            raise KeyError(container_name)
 
     def commit(self, container, dest_image):
-        self.to_commit.append(ContrainerAndDest(container, dest_image))
+        self.to_commit.append(ContainerAndDest(container, dest_image))
 
     def persist(self, container, dest_image):
-        self.to_persist.append(ContrainerAndDest(container, dest_image))
+        self.to_persist.append(ContainerAndDest(container, dest_image))
 
     def volume_include(self, container, src_path, container_path, executable=False):
         container_dir = os.path.dirname(container_path)

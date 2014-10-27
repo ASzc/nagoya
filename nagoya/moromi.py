@@ -25,6 +25,7 @@ import docker
 
 import nagoya.dockerext.build
 import nagoya.buildcsys
+import nagoya.cli.cfg
 
 logger = logging.getLogger("nagoya.build")
 
@@ -54,81 +55,47 @@ def optional_plural(cfg, key):
 # Container system image build
 #
 
-container_system_option_names = {"volumes_from", "links", "commit"}
+container_system_option_names = {"system", "commits", "persists", "root", "libs", "entrypoint"}
 
-volume_spec_pattern = re.compile(r'^(?P<image>[^ ]+) then (discard$|persist to (?P<persist_image>[^: ]+)$)')
-VolImg = collections.namedtuple("VolImg", ["image", "persist_image"])
-def parse_volume_spec(spec, opt_name, image_name):
-    match = volume_spec_pattern.match(spec)
+dest_spec_pattern = re.compile(r'^(?P<container>[^ ]+) to (?P<image>[^ ]+)$')
+ContainerDest = collections.namedtuple("ContainerDest", ["container", "image"])
+def parse_dest_spec(spec, opt_name, image_name):
+    match = dest_spec_pattern.match(spec)
     if match:
-        return VolImg(**match.groupdict())
+        return ContainerDest(**match.groupdict())
     else:
         raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
-
-link_spec_pattern = re.compile(r'^(?:alias (?P<inbound_alias>[^ ]+) for (?P<inbound_image>[^ ]+)|(?P<outbound_image>[^ ]+) alias (?P<outbound_alias>[^ ]+)) then (discard$|commit to (?P<commit_image>[^: ]+)$)')
-LinkImg = collections.namedtuple("LinkImg", ["direction", "image", "alias", "commit_image"])
-def parse_link_spec(spec, opt_name, image_name):
-    match = link_spec_pattern.match(spec)
-    if match:
-        d = match.groupdict()
-        direction = "out" if d["inbound_alias"] is None else "in"
-        image = d[direction+"bound_image"]
-        alias = d[direction+"bound_alias"]
-        commit_image = d["commit_image"]
-        return LinkImg(direction, image, alias, commit_image)
-    else:
-        raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
-
-ContainerWithDest = collections.namedtuple("ContainerWithDest", ["container", "destimage"])
 
 def build_container_system(image_name, image_config, client, quiet, extra_env):
     logger.info("Creating container system for {image_name}".format(**locals()))
 
-    with nagoya.buildcsys.BuildContainerSystem(root_image=image_config["from"],
-                                               client=client,
-                                               cleanup="remove",
-                                               quiet=quiet) as bcs:
+    sys_config = nagoya.cli.cfg.read_one(image_config["system"], ["detach", "run_once"])
 
-        if "commit" in image_config and image_config["commit"]:
-            logger.debug("Root container {root} will be committed".format(**locals()))
-            bcs.commit(bcs.root)
+    with nagoya.buildcsys.BuildContainerSystem.from_dict(sys_config, client=client) as bcs:
+        bcs.cleanup = "remove"
+        bcs.quiet = quiet
+        bcs.root(image_config["root"])
 
         if "entrypoint" in image_config:
             entrypoint_spec = image_config["entrypoint"]
             res_paths = parse_dir_spec(entrypoint_spec, "entrypoint", image_name)
             bcs.root.working_dir = res_paths.dest_dir
-            bcs.root.entrypoint = ["tail", "-f", "/dev/null"] #res_paths.dest_path #TODO temp, remove
+            bcs.root.entrypoint = res_paths.dest_path
             bcs.volume_include(bcs.root, res_paths.src_path, res_paths.dest_path, executable=True)
-
-        for env_spec in itertools.chain(optional_plural(image_config, "envs"), extra_env):
-            k,v = env_spec.split("=", 1)
-            bcs.root.add_env(k, v)
 
         for lib_spec in optional_plural(image_config, "libs"):
             res_paths = parse_dir_spec(lib_spec, "lib", image_name)
             bcs.volume_include(bcs.root, res_paths.src_path, res_paths.dest_path)
 
-        for volume_spec in optional_plural(image_config, "volumes_from"):
-            vol = parse_volume_spec(volume_spec, "volume_from", image_name)
-            vol_container = bcs.container(image=vol.image, detach=False)
-            logger.debug("Root container will have volumes from container {vol_container}".format(**locals()))
-            bcs.root.add_volume_from(vol_container.name, "rw")
-            if vol.persist_image is not None:
-                logger.debug("Container {vol_container} will be persisted to {vol.persist_image}".format(**locals()))
-                bcs.persist(vol_container, vol.persist_image)
+        for commit_spec in optional_plural(image_config, "commits"):
+            dest = parse_dest_spec(commit_spec, "commits", image_name)
+            logger.debug("Container {dest.container} will be committed to {dest.image}".format(**locals()))
+            bcs.commit(dest.container, dest.image)
 
-        for link_spec in optional_plural(image_config, "links"):
-            link = parse_link_spec(link_spec, "link", image_name)
-            link_container = bcs.container(image=link.image, detach=True)
-            if link.direction == "out":
-                logger.debug("Root container will be linked to container {link_container}".format(**locals()))
-                bcs.root.add_link(link_container.name, link.alias)
-            else:
-                logger.debug("Container {link_container} will be linked to root container".format(**locals()))
-                link_container.add_link(bcs.root.name, link.alias)
-            if link.commit_image is not None:
-                logger.debug("Container {link_container} will be committed to {link.commit_image}".format(**locals()))
-                bcs.persist(link_container, link.commit_image)
+        for persist_spec in optional_plural(image_config, "persists"):
+            dest = parse_dest_spec(commit_spec, "persists", image_name)
+            logger.debug("Container {dest.container} will be persisted to {dest.image}".format(**locals()))
+            bcs.persist(dest.container, dest.image)
 
 #
 # Standard image build
