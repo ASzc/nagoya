@@ -40,8 +40,10 @@ class BuildContainerSystem(nagoya.toji.TempToji):
         self.temp_vol_dirs = dict()
         self.quiet = quiet
 
-    def root(self, image_name):
-        self.root = self.container(image=image_name, detach=True)
+    def root(self, container_name):
+        self.root = next((c for c in self.containers if c.name == container_name), "None")
+        if self.root is None:
+            raise KeyError(container_name)
 
     def commit(self, container, dest_image):
         self.to_commit.append(ContainerAndDest(container, dest_image))
