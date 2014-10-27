@@ -29,6 +29,7 @@ def wait_up(hostname, port, attempts=10, timeout=2, wait=2):
         except socket.error as e:
             log.debug("Connection to {0}:{1} failed (attempt {2}/{3}): {4}".format(hostname, port, attempt, attempts, e))
             if attempt >= attempts:
+                log.error("Connection attempts exhausted when waiting for {0}:{1}".format(hostname, port))
                 # Python 2 has wierd exception stuff, just re-raise rather than wrap in AttemptsExhausted exception
                 raise
             time.sleep(wait)
