@@ -65,12 +65,17 @@ def parse_volume_spec(spec, opt_name, image_name):
     else:
         raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
 
-link_spec_pattern = re.compile(r'^(?P<image>[^ ]+) alias (?P<alias>[^ ]+) then (discard$|commit to (?P<commit_image>[^: ]+)$)')
-LinkImg = collections.namedtuple("LinkImg", ["image", "alias", "commit_image"])
+link_spec_pattern = re.compile(r'^(?:alias (?P<inbound_alias>[^ ]+) for (?P<inbound_image>[^ ]+)|(?P<outbound_image>[^ ]+) alias (?P<outbound_alias>[^ ]+)) then (discard$|commit to (?P<commit_image>[^: ]+)$)')
+LinkImg = collections.namedtuple("LinkImg", ["direction", "image", "alias", "commit_image"])
 def parse_link_spec(spec, opt_name, image_name):
     match = link_spec_pattern.match(spec)
     if match:
-        return LinkImg(**match.groupdict())
+        d = match.groupdict()
+        direction = "out" if d["inbound_alias"] is None else "in"
+        image = d[direction+"bound_image"]
+        alias = d[direction+"bound_alias"]
+        commit_image = d["commit_image"]
+        return LinkImg(direction, image, alias, commit_image)
     else:
         raise InvalidFormat("Invalid {opt_name} specification '{spec}' for image {image_name}".format(**locals()))
 
@@ -92,7 +97,7 @@ def build_container_system(image_name, image_config, client, quiet, extra_env):
             entrypoint_spec = image_config["entrypoint"]
             res_paths = parse_dir_spec(entrypoint_spec, "entrypoint", image_name)
             bcs.root.working_dir = res_paths.dest_dir
-            bcs.root.entrypoint = res_paths.dest_path
+            bcs.root.entrypoint = ["tail", "-f", "/dev/null"] #res_paths.dest_path #TODO temp, remove
             bcs.volume_include(bcs.root, res_paths.src_path, res_paths.dest_path, executable=True)
 
         for env_spec in itertools.chain(optional_plural(image_config, "envs"), extra_env):
@@ -115,8 +120,12 @@ def build_container_system(image_name, image_config, client, quiet, extra_env):
         for link_spec in optional_plural(image_config, "links"):
             link = parse_link_spec(link_spec, "link", image_name)
             link_container = bcs.container(image=link.image, detach=True)
-            logger.debug("Root container will be linked to container {link_container}".format(**locals()))
-            bcs.root.add_link(link_container.name, link.alias)
+            if link.direction == "out":
+                logger.debug("Root container will be linked to container {link_container}".format(**locals()))
+                bcs.root.add_link(link_container.name, link.alias)
+            else:
+                logger.debug("Container {link_container} will be linked to root container".format(**locals()))
+                link_container.add_link(bcs.root.name, link.alias)
             if link.commit_image is not None:
                 logger.debug("Container {link_container} will be committed to {link.commit_image}".format(**locals()))
                 bcs.persist(link_container, link.commit_image)
