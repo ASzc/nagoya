@@ -18,6 +18,7 @@
 import logging
 import sys
 import concurrent.futures as futures
+import traceback
 
 import docker
 import toposort
@@ -25,6 +26,16 @@ import toposort
 import nagoya.dockerext.container
 
 logger = logging.getLogger("nagoya.toji")
+
+class ExecutionError(Exception):
+    def __init__(self, exceptions):
+        self.exceptions = exceptions
+        tracebacks = "\n==========\n".join(
+            ["".join(traceback.format_exception(*e._exc_info))
+             for e in exceptions]
+        )
+        message = "Exception(s) from command execution:\n{tracebacks}".format(**locals())
+        super(ExecutionError, self).__init__(message)
 
 # Modified futures run that passes the complete exc_info as an attribute of the exception
 # Have to use this to work around Python 2's limited exception handling to extract a full traceback
@@ -114,26 +125,22 @@ class Toji(object):
 
     # Run against containers in order of dependency groups
     def containers_exec(self, func, group_ordering=lambda x: x):
-        # Modify run method on Python 2
-        # concurrent.futures.thread only imports sys in Python 2
-        if (hasattr(futures.thread, "sys")
-            and not futures.thread._WorkItem.run.__code__.co_code == cft_run.__code__.co_code):
+        # Modify run method to provide exc_info consistently for Python 2 and 3
+        if not futures.thread._WorkItem.run.__code__.co_code == cft_run.__code__.co_code:
             futures.thread._WorkItem.run = cft_run
 
         mw = max(map(len, self.container_sync_groups))
         with futures.ThreadPoolExecutor(max_workers=mw) as pool:
             for container_group in group_ordering(self.container_sync_groups):
                 fs = [pool.submit(func, c) for c in container_group]
+                exceptions = []
                 for future in futures.as_completed(fs):
                     ex = future.exception()
                     if ex is not None:
-                        # Work around Python 2 truncating the traceback upon rethrowing
-                        # _exc_info is added to exception by modified futures run method
-                        if hasattr(ex, "_exc_info"):
-                            ei = ex._exc_info
-                            # Work around SyntaxError on Python 3
-                            exec("raise ei[0], ei[1], ei[2]")
-                        raise ex
+                        exceptions.append(ex)
+                if not exceptions == []:
+                    raise ExecutionError(exceptions)
+                # TODO include logs from any exited, errored, containers?
 
     def init_containers(self):
         self.containers_exec(nagoya.dockerext.container.Container.init)
