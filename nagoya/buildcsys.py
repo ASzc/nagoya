@@ -42,7 +42,7 @@ class BuildContainerSystem(nagoya.toji.TempToji):
         self.quiet = quiet
 
     def _root(self, image_name):
-        return self.container(image=image_name, detach=False)
+        return self.container(image=image_name, detach=True)
 
     def commit(self, container, dest_image):
         self.to_commit.append(ContrainerAndDest(container, dest_image))
