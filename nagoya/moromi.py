@@ -80,7 +80,7 @@ def build_container_system(image_name, image_config, client, quiet, extra_env):
             entrypoint_spec = image_config["entrypoint"]
             res_paths = parse_dir_spec(entrypoint_spec, "entrypoint", image_name)
             bcs.root.working_dir = res_paths.dest_dir
-            bcs.root.entrypoint = ["tail", "-f", "/dev/null"] #res_paths.dest_path #TODO temp, remove
+            bcs.root.entrypoint = res_paths.dest_path
             bcs.volume_include(bcs.root, res_paths.src_path, res_paths.dest_path, executable=True)
 
         for lib_spec in optional_plural(image_config, "libs"):
