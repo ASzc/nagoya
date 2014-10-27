@@ -178,11 +178,11 @@ class TempToji(Toji):
             self._cleanup = self.cleanup_nothing
         elif isinstance(value, str):
             if value in ["nothing", "stop", "remove"]:
-                self._cleanup = getattr(self, "cleanup_" + cleanup)
+                self._cleanup = getattr(self, "cleanup_" + value)
             else:
-                ValueError("Cleanup function for str {cleanup} is not available".format(**locals()))
+                ValueError("Cleanup function for str {value} is not available".format(**locals()))
         else:
-            self._cleanup = cleanup
+            self._cleanup = value
 
     def container(self, *args, **kwargs):
         return self._container(nagoya.dockerext.container.TempContainer, *args, **kwargs)

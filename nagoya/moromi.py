@@ -59,7 +59,7 @@ container_system_option_names = {"system", "commits", "persists", "root", "libs"
 
 dest_spec_pattern = re.compile(r'^(?P<container>[^ ]+) to (?P<image>[^ ]+)$')
 ContainerDest = collections.namedtuple("ContainerDest", ["container", "image"])
-def parse_dest_spec(spec, opt_name, image_name)
+def parse_dest_spec(spec, opt_name, image_name):
     match = dest_spec_pattern.match(spec)
     if match:
         return ContainerDest(**match.groupdict())
