@@ -22,6 +22,7 @@ import collections
 import itertools
 
 import docker
+import toposort
 
 import nagoya.dockerext.build
 import nagoya.buildcsys
@@ -178,7 +179,14 @@ def build_image(image_name, image_config, client, quiet, extra_env):
 # Build images
 #
 
-def build_images(config, images, quiet, env):
+def resolve_dep_order(image_names):
+    pass
+
+def build_images(config, quiet, env, images=None):
+    if images is None:
+        logger.info("Resolving image dependency order")
+        images = resolve_dep_order(config.keys())
+
     num_img = len(images)
     logger.info("Building {0} image{1}".format(num_img, "s" if num_img > 1 else ""))
 
