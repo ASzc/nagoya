@@ -168,7 +168,7 @@ class Toji(object):
                     logs = dict()
                     for cont in touched_containers:
                         ins = cont.inspect()
-                        if ins is not None and not ins["State"]["Status"] == 0:
+                        if ins is not None and not ins["State"]["ExitCode"] == 0:
                             logs[cont.name] = cont.logs()
                     raise ExecutionError(exceptions, logs)
 
