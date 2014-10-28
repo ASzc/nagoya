@@ -56,7 +56,7 @@ def optional_plural(cfg, key):
 # Container system image build
 #
 
-container_system_option_names = {"system", "commits", "persists", "root", "libs", "entrypoint"}
+container_system_option_names = {"system", "commits", "persists", "root"}
 
 dest_spec_pattern = re.compile(r'^(?P<container>[^ ]+) to (?P<image>[^ ]+)$')
 ContainerDest = collections.namedtuple("ContainerDest", ["container", "image"])
