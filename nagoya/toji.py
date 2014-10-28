@@ -35,12 +35,12 @@ class ExecutionError(Exception):
         self.regen_args()
     # Python ignores overriding args, so we have to do this obliquely
     def regen_args(self):
-        tracebacks = "\n\n".join(
+        tracebacks = "\n".join(
             ["".join(traceback.format_exception(*e._exc_info))
              for e in self.exceptions]
         )
         if self.show_logs and not self.logs == dict():
-            logs = "\n\n" + "\n\n".join(
+            logs = "\n" + "\n\n".join(
                 ["Logs for {0}:\n{1}".format(k,v) for k,v in self.logs.items()]
             )
         else:
