@@ -179,13 +179,41 @@ def build_image(image_name, image_config, client, quiet, extra_env):
 # Build images
 #
 
-def resolve_dep_order(image_names):
+def resolve_dep_order(images_config):
+    # Figure out what images are provided by this config
+    # Anything not provided is assumed to exist already
+    provided_images = dict()
+    for image_name,image_config in images_config.items():
+        if container_system_option_names.isdisjoint(image_config.keys()):
+            provided_images[image_name] = {image_name}
+        else:
+            provided = set()
+            provided_images[image_name] = provided
+            for commit_spec in optional_plural(image_config, "commits"):
+                dest = parse_dest_spec(commit_spec, "commits", image_name)
+                provided.add(dest.container)
+            for persist_spec in optional_plural(image_config, "persists"):
+                dest = parse_dest_spec(commit_spec, "persists", image_name)
+                provided.add(dest.container)
+
+    # Figure out the images required (among those provided) by images in this config
+    deps = dict()
+    for image_name,image_config in images_config.items():
+
+
+
+        deps[image_name] = TODO
+
+
+    # TODO for group in toposort.toposort
+    # TODO use original order of keys of images_config to resolve inner group ordering
+    # TODO Merge into list of keys (image names)
     pass
 
 def build_images(config, quiet, env, images=None):
     if images is None:
         logger.info("Resolving image dependency order")
-        images = resolve_dep_order(config.keys())
+        images = resolve_dep_order(config)
 
     num_img = len(images)
     logger.info("Building {0} image{1}".format(num_img, "s" if num_img > 1 else ""))
