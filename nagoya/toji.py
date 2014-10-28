@@ -28,7 +28,8 @@ import nagoya.dockerext.container
 logger = logging.getLogger("nagoya.toji")
 
 class ExecutionError(Exception):
-    def __init__(self, exceptions):
+    def __init__(self, exceptions, logs):
+        self.logs = logs
         self.exceptions = exceptions
         tracebacks = "\n==========\n".join(
             ["".join(traceback.format_exception(*e._exc_info))
@@ -129,18 +130,30 @@ class Toji(object):
         if not futures.thread._WorkItem.run.__code__.co_code == cft_run.__code__.co_code:
             futures.thread._WorkItem.run = cft_run
 
+        # Max worker count is the max size of the sync groups
         mw = max(map(len, self.container_sync_groups))
         with futures.ThreadPoolExecutor(max_workers=mw) as pool:
+            touched_containers = []
+
             for container_group in group_ordering(self.container_sync_groups):
                 fs = [pool.submit(func, c) for c in container_group]
+                touched_containers.extend(container_group)
+
+                # Bundle any exceptions from this container group
                 exceptions = []
                 for future in futures.as_completed(fs):
                     ex = future.exception()
                     if ex is not None:
                         exceptions.append(ex)
+
                 if not exceptions == []:
-                    raise ExecutionError(exceptions)
-                # TODO include logs from any exited, errored, containers?
+                    # Include logs for exited, errored containers that exist
+                    logs = dict()
+                    for cont in touched_containers:
+                        ins = cont.inspect()
+                        if ins is not None and not ins["State"]["Status"] == 0:
+                            logs[cont.name] = cont.logs()
+                    raise ExecutionError(exceptions, logs)
 
     def init_containers(self):
         self.containers_exec(nagoya.dockerext.container.Container.init)
