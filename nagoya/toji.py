@@ -28,15 +28,32 @@ import nagoya.dockerext.container
 logger = logging.getLogger("nagoya.toji")
 
 class ExecutionError(Exception):
-    def __init__(self, exceptions, logs):
+    def __init__(self, exceptions, logs, show_logs=False):
+        self._show_logs = show_logs
         self.logs = logs
         self.exceptions = exceptions
-        tracebacks = "\n==========\n".join(
+        self.regen_args()
+    # Python ignores overriding args, so we have to do this obliquely
+    def regen_args(self):
+        tracebacks = "\n\n".join(
             ["".join(traceback.format_exception(*e._exc_info))
-             for e in exceptions]
+             for e in self.exceptions]
         )
-        message = "Exception(s) from command execution:\n{tracebacks}".format(**locals())
-        super(ExecutionError, self).__init__(message)
+        if self.show_logs and not self.logs == dict():
+            logs = "\n\n" + "\n\n".join(
+                ["Logs for {0}:\n{1}".format(k,v) for k,v in self.logs.items()]
+            )
+        else:
+            logs = ""
+        self.args = ("Exception(s) from command execution:\n\n{tracebacks}{logs}".format(**locals()),)
+    @property
+    def show_logs(self):
+        return self._show_logs
+    @show_logs.setter
+    def show_logs(self, value):
+        if not self._show_logs == value:
+            self._show_logs = value
+            self.regen_args()
 
 # Modified futures run that passes the complete exc_info as an attribute of the exception
 # Have to use this to work around Python 2's limited exception handling to extract a full traceback
