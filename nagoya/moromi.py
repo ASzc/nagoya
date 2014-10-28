@@ -214,7 +214,7 @@ def resolve_dep_order(images_config):
     # Toposort to sync groups, use original order of keys to order within groups
     image_names = []
     for group in toposort.toposort(deps):
-        image_names.extend(sorted(group, key=lambda n: images_config.index(n)))
+        image_names.extend(sorted(group, key=lambda n: images_config.keys().index(n)))
 
     return image_names
 
