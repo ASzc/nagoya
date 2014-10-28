@@ -173,7 +173,11 @@ class Toji(object):
                     raise ExecutionError(exceptions, logs)
 
     def init_containers(self):
-        self.containers_exec(nagoya.dockerext.container.Container.init)
+        try:
+            self.containers_exec(nagoya.dockerext.container.Container.init)
+        except ExecutionError as e:
+            e.show_logs = True
+            raise
 
     def start_containers(self):
         self.containers_exec(nagoya.dockerext.container.Container.start)
