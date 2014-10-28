@@ -306,7 +306,25 @@ class Container(object):
         if error_ok or status == 0:
             return status
         else:
-            raise ContainerExitError(status, self.client.logs(self.name), self.client.inspect_container(self.name))
+            raise ContainerExitError(status, self.logs(), self.inspect())
+
+    def logs(self, not_exists_ok=True):
+        try:
+            return self.client.logs(self.name)
+        except docker.errors.APIError as e:
+            if not_exists_ok and e.response.status_code == 404:
+                logger.debug("Container {0} does not exist".format(self))
+            else:
+                raise
+
+    def inspect(self, not_exists_ok=True):
+        try:
+            return self.client.inspect_container(self.name)
+        except docker.errors.APIError as e:
+            if not_exists_ok and e.response.status_code == 404:
+                logger.debug("Container {0} does not exist".format(self))
+            else:
+                raise
 
     def dependency_names(self):
         deps = set()
