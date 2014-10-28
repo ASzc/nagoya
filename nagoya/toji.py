@@ -18,6 +18,7 @@
 import logging
 import sys
 import concurrent.futures as futures
+import traceback
 
 import docker
 import toposort
@@ -25,6 +26,34 @@ import toposort
 import nagoya.dockerext.container
 
 logger = logging.getLogger("nagoya.toji")
+
+class ExecutionError(Exception):
+    def __init__(self, exceptions, logs, show_logs=False):
+        self._show_logs = show_logs
+        self.logs = logs
+        self.exceptions = exceptions
+        self.regen_args()
+    # Python ignores overriding args, so we have to do this obliquely
+    def regen_args(self):
+        tracebacks = "\n".join(
+            ["".join(traceback.format_exception(*e._exc_info))
+             for e in self.exceptions]
+        )
+        if self.show_logs and not self.logs == dict():
+            logs = "\n" + "\n\n".join(
+                ["Logs for {0}:\n{1}".format(k,v) for k,v in self.logs.items()]
+            )
+        else:
+            logs = ""
+        self.args = ("Exception(s) from command execution:\n\n{tracebacks}{logs}".format(**locals()),)
+    @property
+    def show_logs(self):
+        return self._show_logs
+    @show_logs.setter
+    def show_logs(self, value):
+        if not self._show_logs == value:
+            self._show_logs = value
+            self.regen_args()
 
 # Modified futures run that passes the complete exc_info as an attribute of the exception
 # Have to use this to work around Python 2's limited exception handling to extract a full traceback
@@ -114,29 +143,41 @@ class Toji(object):
 
     # Run against containers in order of dependency groups
     def containers_exec(self, func, group_ordering=lambda x: x):
-        # Modify run method on Python 2
-        # concurrent.futures.thread only imports sys in Python 2
-        if (hasattr(futures.thread, "sys")
-            and not futures.thread._WorkItem.run.__code__.co_code == cft_run.__code__.co_code):
+        # Modify run method to provide exc_info consistently for Python 2 and 3
+        if not futures.thread._WorkItem.run.__code__.co_code == cft_run.__code__.co_code:
             futures.thread._WorkItem.run = cft_run
 
+        # Max worker count is the max size of the sync groups
         mw = max(map(len, self.container_sync_groups))
         with futures.ThreadPoolExecutor(max_workers=mw) as pool:
+            touched_containers = []
+
             for container_group in group_ordering(self.container_sync_groups):
                 fs = [pool.submit(func, c) for c in container_group]
+                touched_containers.extend(container_group)
+
+                # Bundle any exceptions from this container group
+                exceptions = []
                 for future in futures.as_completed(fs):
                     ex = future.exception()
                     if ex is not None:
-                        # Work around Python 2 truncating the traceback upon rethrowing
-                        # _exc_info is added to exception by modified futures run method
-                        if hasattr(ex, "_exc_info"):
-                            ei = ex._exc_info
-                            # Work around SyntaxError on Python 3
-                            exec("raise ei[0], ei[1], ei[2]")
-                        raise ex
+                        exceptions.append(ex)
+
+                if not exceptions == []:
+                    # Include logs for exited, errored containers that exist
+                    logs = dict()
+                    for cont in touched_containers:
+                        ins = cont.inspect()
+                        if ins is not None and not ins["State"]["ExitCode"] == 0:
+                            logs[cont.name] = cont.logs()
+                    raise ExecutionError(exceptions, logs)
 
     def init_containers(self):
-        self.containers_exec(nagoya.dockerext.container.Container.init)
+        try:
+            self.containers_exec(nagoya.dockerext.container.Container.init)
+        except ExecutionError as e:
+            e.show_logs = True
+            raise
 
     def start_containers(self):
         self.containers_exec(nagoya.dockerext.container.Container.start)
