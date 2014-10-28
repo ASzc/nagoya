@@ -22,6 +22,7 @@ import collections
 import itertools
 
 import docker
+import toposort
 
 import nagoya.dockerext.build
 import nagoya.buildcsys
@@ -178,7 +179,50 @@ def build_image(image_name, image_config, client, quiet, extra_env):
 # Build images
 #
 
-def build_images(config, images, quiet, env):
+def resolve_dep_order(images_config):
+    # Figure out what images are provided by this config
+    # Anything not provided is assumed to exist already
+    provided_images = dict()
+    for image_name,image_config in images_config.items():
+        if container_system_option_names.isdisjoint(image_config.keys()):
+            provided_images[image_name] = image_name
+        else:
+            provided_images[image_name] = provided
+            for commit_spec in optional_plural(image_config, "commits"):
+                dest = parse_dest_spec(commit_spec, "commits", image_name)
+                provided_images[dest.image] = image_name
+            for persist_spec in optional_plural(image_config, "persists"):
+                dest = parse_dest_spec(commit_spec, "persists", image_name)
+                provided_images[dest.image] = image_name
+
+    # Figure out the images required (among those provided) by images in this config
+    deps = dict()
+    for image_name,image_config in images_config.items():
+        req = set()
+        deps[image_name] = req
+        if container_system_option_names.isdisjoint(image_config.keys()):
+            from_name = image_config["from"].split(":", 1)[0]
+            if from_name in provided_images:
+                req.add(from_name)
+        else:
+            sys_config = nagoya.cli.cfg.read_one(image_config["system"])
+            for cont_config in sys_config.values():
+                image_name = cont_config["image"].split(":", 1)[0]
+                if image_name in provided_images:
+                    req.add(image_name)
+
+    # Toposort to sync groups, use original order of keys to order within groups
+    image_names = []
+    for group in toposort.toposort(deps):
+        image_names.extend(sorted(group, key=lambda n: images_config.keys().index(n)))
+
+    return image_names
+
+def build_images(config, quiet, env, images=None):
+    if images is None:
+        logger.info("Resolving image dependency order")
+        images = resolve_dep_order(config)
+
     num_img = len(images)
     logger.info("Building {0} image{1}".format(num_img, "s" if num_img > 1 else ""))
 

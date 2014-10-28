@@ -16,6 +16,7 @@
 #
 
 import os
+import collections
 try:
     import ConfigParser as configparser
 except ImportError:
@@ -30,7 +31,7 @@ def read_one(path, boolean_options=[]):
         dirname = os.path.dirname(path)
         format_vars["cfgdir"] = "." if dirname == "" else dirname
 
-        d = dict()
+        d = collections.OrderedDict()
         for section in config.sections():
             d[section] = dict()
             format_vars["section"] = section
@@ -55,7 +56,7 @@ def read_config(paths, default_paths, boolean_options=[]):
     if paths == []:
         paths = default_paths
 
-    dictionary = dict()
+    dictionary = collections.OrderedDict()
     successful_paths = []
     for path in map(os.path.expanduser, paths):
         d = read_one(path, boolean_options)
