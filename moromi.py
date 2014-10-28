@@ -30,11 +30,21 @@ import nagoya.moromi
 default_config_paths = ["cfg/images.cfg"]
 boolean_config_options = ["commit"]
 
+def sc_all(args):
+    config, _ = nagoya.cli.cfg.read_config(args.config, default_config_paths, boolean_config_options)
+    return nagoya.moromi.build_images(config, args.quiet_build, args.env)
+
+def scargs_all(parser):
+    parser.description = "Build all images in the configuration, automatically resolving dependency order."
+    parser.add_argument("-b", "--quiet-build", action="store_true", help="Do not print the builds' stdout/stderr")
+    parser.add_argument("-e", "--env", metavar="K=V", action="append", default=[], help="Set a variable in the builds' environment")
+
 def sc_build(args):
     config, _ = nagoya.cli.cfg.read_config(args.config, default_config_paths, boolean_config_options)
-    return nagoya.moromi.build_images(config, args.images, args.quiet_build, args.env)
+    return nagoya.moromi.build_images(config, args.quiet_build, args.env, args.images)
 
 def scargs_build(parser):
+    parser.description = "Build images from the configuration in the specified order."
     parser.add_argument("-b", "--quiet-build", action="store_true", help="Do not print the builds' stdout/stderr")
     parser.add_argument("-e", "--env", metavar="K=V", action="append", default=[], help="Set a variable in the builds' environment")
     imgs = parser.add_argument("images", metavar="IMAGE", nargs="+", help="Image to build")
@@ -45,8 +55,11 @@ def sc_clean(args):
     c = docker.Client()
     nagoya.dockerext.build.clean_untagged_images(c)
 
+def scargs_clean(parser):
+    parser.description = "Remove all untagged local images"
+
 if __name__ == "__main__":
-    parser = nagoya.cli.args.create_default_argument_parser(description="Build docker images")
+    parser = nagoya.cli.args.create_default_argument_parser(description="Work with docker images")
     nagoya.cli.args.add_subcommand_subparsers(parser)
     nagoya.cli.args.attempt_autocomplete(parser)
     args = parser.parse_args()
