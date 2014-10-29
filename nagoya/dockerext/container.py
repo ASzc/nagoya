@@ -137,8 +137,9 @@ class Container(object):
         return str(uuid.uuid4())
 
     def __init__(self, image, name=None, detach=True, entrypoint=None,
-                 run_once=False, working_dir=None, callbacks=None, envs=None,
-                 links=None, volumes=None, volumes_from=None):
+                 run_once=False, working_dir=None, callbacks=None,
+                 commands=None, envs=None, links=None, volumes=None,
+                 volumes_from=None):
 
         # For mutable defaults
         def mdef(candidate, default):
@@ -151,6 +152,7 @@ class Container(object):
         self.run_once = run_once
         self.working_dir = working_dir
         self.callbacks = mdef(callbacks, [])
+        self.commands = mdef(commands, [])
         self.envs =  mdef(envs, [])
         self.links = mdef(links, [])
         self.volumes = mdef(volumes, [])
@@ -177,6 +179,7 @@ class Container(object):
                      "run_once" : copy,
                      "working_dir" : copy,
                      "callbacks" : plural_ft(Callspec),
+                     "commands" : lambda k: d[k].split("\n"),
                      "envs" : plural_ft(Env),
                      "links" : plural_ft(NetworkLink),
                      "volumes" : plural_ft(VolumeLink),
@@ -221,7 +224,7 @@ class Container(object):
                                          entrypoint=self.entrypoint,
                                          working_dir=self.working_dir,
                                          environment=self.envs_api_formatted(),
-                                         command=[""])
+                                         command=[""] if self.commands == [] else self.commands)
             logger.info("Created container {0}".format(self))
             self._process_callbacks("post", "create")
         except docker.errors.APIError as e:
