@@ -387,3 +387,9 @@ class TempContainer(Container):
         if name is None:
             name = image_name + "." + self.random_name()[:8]
         super(TempContainer, self).__init__(image, name=name, **kwargs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.remove()

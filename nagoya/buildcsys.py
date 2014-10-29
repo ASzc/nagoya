@@ -99,34 +99,37 @@ class BuildContainerSystem(nagoya.toji.TempToji):
                 container_tar_path = os.path.join(container_volume_dir, "extract.tar")
                 host_tar_path = os.path.join(tdir.name, "extract.tar")
 
-                extract_container = nagoya.dockerext.container.TempContainer("busybox")
-                extract_container.client = self.client
-                extract_container.add_volume(tdir.name, container_volume_dir)
-                # TODO ^^^ host volumes working on Fedora depends on Docker#5910
-                extract_container.add_volume_from(container.name, "ro")
-                extract_container.entrypoint = ["tar", "-cf", container_tar_path]
-                extract_container.commands = volume_paths
-                extract_container.init()
-                extract_container.wait(error_ok=False)
+                with nagoya.dockerext.container.TempContainer("busybox") as extract_container:
+                    extract_container.client = self.client
+                    extract_container.add_volume(tdir.name, container_volume_dir)
+                    # TODO ^^^ host volumes working on Fedora depends on Docker#5910
+                    extract_container.add_volume_from(container.name, "ro")
+                    extract_container.entrypoint = ["tar", "-cf", container_tar_path]
+                    extract_container.commands = volume_paths
+                    extract_container.init()
+                    extract_container.wait(error_ok=False)
 
                 logger.info("Building image {image} with volume data from {container} container".format(**locals()))
                 with nagoya.dockerext.build.BuildContext(image, container.image, self.client, self.quiet) as context:
-                    context.include(host_tar_path, "/")
+                    context.include(host_tar_path, "/", context_rel_path="extract.tar")
 
     def __exit__(self, exc, value, tb):
         try:
             try:
                 if exc is None:
                     self._run()
+            except Exception as e:
+                logger.error("Exception raised during build container run, running cleanup before raising")
+                raise
             finally:
                 for temp_dirs in self.temp_vol_dirs.values():
                     for temp_dir in temp_dirs.values():
                         temp_dir.cleanup()
-
-            if exc is None:
-                self._build()
-        except Exception as e:
-            logger.error("Exception raised during build, running cleanup before raising")
-            raise
+            try:
+                if exc is None:
+                    self._build()
+            except Exception as e:
+                logger.error("Exception raised during build, running cleanup before raising")
+                raise
         finally:
             super(BuildContainerSystem, self).__exit__(exc, value, tb)

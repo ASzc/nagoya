@@ -196,9 +196,9 @@ class BuildContext(nagoya.temp.TempDirectory):
     def add(self, context_path, image_path):
         self._write_df("ADD", context_path, image_path)
 
-    def include(self, source_path, image_path, executable=False):
+    def include(self, source_path, image_path, context_rel_path=None, executable=False):
         # Include in context dir
-        context_rel_path = os.path.normpath(image_path)
+        context_rel_path = os.path.normpath(image_path) if context_rel_path is None else context_rel_path
         super(BuildContext, self).include(source_path, context_rel_path, executable)
         # Add to image from context dir
         self.add(context_rel_path, image_path)
