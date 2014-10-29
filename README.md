@@ -162,6 +162,7 @@ Entrypoint | Override the image's entrypoint
 Run_Once | Ignore start commands if the container has been started previously if true. Boolean.
 Working_Dir | Override the image's working directory
 Callbacks | Execute additional functions on some events. See [section](#callbacks)
+Commands | Arguments for the entrypoint, or (with no entrypoint) an existing container path with arguments.
 Envs | Assign values to environment variables
 Links | Create a network link, with hostname alias
 Volumes | Set volumes for the container not specified in the image
