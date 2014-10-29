@@ -104,7 +104,8 @@ class BuildContainerSystem(nagoya.toji.TempToji):
                 extract_container.add_volume(tdir.name, container_volume_dir)
                 # TODO ^^^ host volumes working on Fedora depends on Docker#5910
                 extract_container.add_volume_from(container.name, "ro")
-                extract_container.entrypoint = ["tar", "-cf", container_tar_path] + volume_paths
+                extract_container.entrypoint = ["tar", "-cf", container_tar_path]
+                extract_container.commands = volume_paths
                 extract_container.init()
                 extract_container.wait(error_ok=False)
 
