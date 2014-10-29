@@ -75,7 +75,7 @@ def build_container_system(image_name, image_config, client, quiet, extra_env):
     with nagoya.buildcsys.BuildContainerSystem.from_dict(sys_config, client=client) as bcs:
         bcs.cleanup = "remove"
         bcs.quiet = quiet
-        bcs.root(image_config["root"])
+        bcs.root_name(image_config["root"])
 
         if "entrypoint" in image_config:
             entrypoint_spec = image_config["entrypoint"]
