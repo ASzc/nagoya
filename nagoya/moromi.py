@@ -94,7 +94,7 @@ def build_container_system(image_name, image_config, client, quiet, extra_env):
             bcs.commit(dest.container, dest.image)
 
         for persist_spec in optional_plural(image_config, "persists"):
-            dest = parse_dest_spec(commit_spec, "persists", image_name)
+            dest = parse_dest_spec(persist_spec, "persists", image_name)
             logger.debug("Container {dest.container} will be persisted to {dest.image}".format(**locals()))
             bcs.persist(dest.container, dest.image)
 

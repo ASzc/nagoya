@@ -45,11 +45,17 @@ class BuildContainerSystem(nagoya.toji.TempToji):
         if self.root is None:
             raise KeyError(container_name)
 
-    def commit(self, container, dest_image):
-        self.to_commit.append(ContainerAndDest(container, dest_image))
+    def _lookup_container(self, container_name):
+        for container in self.containers:
+            if container.name == container_name:
+                return container
+        raise KeyError(container_name)
 
-    def persist(self, container, dest_image):
-        self.to_persist.append(ContainerAndDest(container, dest_image))
+    def commit(self, container_name, dest_image):
+        self.to_commit.append(ContainerAndDest(self._lookup_container(container_name), dest_image))
+
+    def persist(self, container_name, dest_image):
+        self.to_persist.append(ContainerAndDest(self._lookup_container(container_name), dest_image))
 
     def volume_include(self, container, src_path, container_path, executable=False):
         container_dir = os.path.dirname(container_path)
@@ -78,7 +84,7 @@ class BuildContainerSystem(nagoya.toji.TempToji):
     def _build(self):
         for container, image in self.to_commit:
             logger.info("Commiting {container} container to image {image}".format(**locals()))
-            self.client.commit(container, image)
+            self.client.commit(container.name, image)
 
         for container, image in self.to_persist:
             logger.info("Persisting {container} container to image {image}".format(**locals()))
