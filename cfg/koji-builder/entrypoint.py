@@ -29,6 +29,8 @@ else:
 
 def shutdown(*args):
     log.info("Stopping")
+    log.info("Attempting to disable host {0}".format(builder_name))
+    subprocess.call(["koji", "-d", "disable-host", builder_name])
 
 cleanup.register_excepthook(shutdown)
 cleanup.register_sig_handler(shutdown)
@@ -54,6 +56,9 @@ if host_is_new:
     log.info("Configuring new host {0}".format(builder_name))
     subprocess.check_call(["koji", "-d", "add-host-to-channel", builder_name, "createrepo"])
     subprocess.check_call(["koji", "-d", "edit-host", "--capacity", "10", builder_name])
+else:
+    log.info("Enabling existing host {0}".format(builder_name))
+    subprocess.check_call(["koji", "-d", "enable-host", builder_name])
 
 log.info("Calling kojid")
 subprocess.check_call(["kojid", "--fg", "--verbose", "--force-lock"])
