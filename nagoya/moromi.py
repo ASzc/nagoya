@@ -187,7 +187,6 @@ def resolve_dep_order(images_config):
         if container_system_option_names.isdisjoint(image_config.keys()):
             provided_images[image_name] = image_name
         else:
-            provided_images[image_name] = provided
             for commit_spec in optional_plural(image_config, "commits"):
                 dest = parse_dest_spec(commit_spec, "commits", image_name)
                 provided_images[dest.image] = image_name
