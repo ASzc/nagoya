@@ -30,7 +30,8 @@ else:
 def shutdown(*args):
     log.info("Stopping")
     log.info("Attempting to disable host {0}".format(builder_name))
-    subprocess.call(["koji", "-d", "disable-host", builder_name])
+    if remote.is_up(kojihub_name, 80):
+        subprocess.call(["koji", "-d", "disable-host", builder_name])
 
 cleanup.register_excepthook(shutdown)
 cleanup.register_sig_handler(shutdown)
