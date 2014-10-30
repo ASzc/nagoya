@@ -6,11 +6,15 @@ import util.system as system
 import util.remote as remote
 from util.log import log
 
+import sys
+
 kojidatabase_name = "kojidatabase"
 remote.require_container(kojidatabase_name)
 remote.wait_if_not_up(kojidatabase_name, 5432)
 
-services = ["httpd", "kojira"]
+services = ["httpd"]
+if not "nokojira" in sys.argv:
+    services.append("kojira")
 
 def shutdown(*args):
     for service in reversed(services):
