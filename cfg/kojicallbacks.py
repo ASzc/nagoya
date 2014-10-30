@@ -46,7 +46,10 @@ def vol_copy(container, container_paths, target_host_dir):
     extract_container.add_volume(target_host_dir, container_volume_dir)
     # TODO ^^^ host volumes working on Fedora depends on Docker#5910
     extract_container.add_volume_from(container.name, "ro")
-    extract_container.entrypoint = ["cp", "-R"] + container_paths + [target_host_dir]
+    extract_container.entrypoint = ["cp", "-R"]
+    extract_container.commands = container_paths + [container_volume_dir]
+    if not os.path.exists(target_host_dir):
+        os.makedirs(target_host_dir)
     try:
         extract_container.init()
         extract_container.wait()
