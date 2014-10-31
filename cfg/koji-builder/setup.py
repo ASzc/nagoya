@@ -44,6 +44,11 @@ with cfg.mod_ini("/etc/kojid/kojid.conf") as i:
     i.kojid.smtphost = "koji"
     i.kojid.from_addr = "Koji Build System <buildsys@kojibuilder>"
 
+log.info("Modify mock to not call unshare")
+with cfg.mod_text("/usr/lib/python2.6/site-packages/mockbuild/util.py") as lines:
+    i = lines.index("def unshare(flags):\n")
+    lines.insert(i+1, "    return\n")
+
 #
 # Koji CLI
 #
