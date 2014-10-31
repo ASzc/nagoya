@@ -56,6 +56,7 @@ else:
 if host_is_new:
     log.info("Configuring new host {0}".format(builder_name))
     subprocess.check_call(["koji", "-d", "add-host-to-channel", builder_name, "createrepo"])
+    subprocess.check_call(["koji", "-d", "add-host-to-channel", builder_name, "maven"])
     subprocess.check_call(["koji", "-d", "edit-host", "--capacity", "10", builder_name])
 else:
     log.info("Enabling existing host {0}".format(builder_name))
