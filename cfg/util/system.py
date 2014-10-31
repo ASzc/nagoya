@@ -2,6 +2,7 @@ import subprocess
 import os
 import binascii
 import platform
+import socket
 import util.demote
 from util.log import log
 
@@ -26,3 +27,6 @@ def random_secret():
 
 def hostname():
     return platform.node()
+
+def host_ipv4_address():
+    return socket.gethostbyname(os.environ["HOSTNAME"])

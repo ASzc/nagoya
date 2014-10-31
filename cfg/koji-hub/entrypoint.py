@@ -12,6 +12,9 @@ kojidatabase_name = "kojidatabase"
 remote.require_container(kojidatabase_name)
 remote.wait_if_not_up(kojidatabase_name, 5432)
 
+with cfg.mod_ini("/etc/kojiweb/web.conf") as i:
+    i.web.KojiFilesURL = "http://{addr}/kojifiles".format(addr=system.host_ipv4_address())
+
 services = ["httpd"]
 if not "nokojira" in sys.argv:
     services.append("kojira")
