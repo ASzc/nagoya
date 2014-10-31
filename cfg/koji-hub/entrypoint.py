@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 import util.cleanup as cleanup
+import util.cfg as cfg
 import util.tail as tail
 import util.system as system
 import util.remote as remote
