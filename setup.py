@@ -16,20 +16,19 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
+long_description = """
+"""
+
 install_requires = [
     "docker-py==0.5.0",
     "toposort==1.1",
 ]
-
 if sys.version_info[0] < 3:
     install_requires.append("futures>=2.2.0")
 
 # Sets __version__ without importing the module
 with open("nagoya/version.py", "r") as fp:
     exec(fp.read())
-
-with open("README.md", "r") as fp:
-    long_description = fp.read()
 
 setup(
     name="nagoya",
@@ -43,4 +42,5 @@ setup(
     install_requires=install_requires,
     long_description=long_description,
     classifiers=classifiers,
+    scripts=["toji", "moromi"],
 )
