@@ -48,7 +48,7 @@ log.info("Modify mock to not mount vfs before yum is run")
 with cfg.mod_text("/usr/lib/python2.6/site-packages/mockbuild/backend.py") as lines:
     i = lines.index("        self.mounts.mountall()\n")
     lines[i] = """
-        if os.path.getsize(self.makeChrootPath("var", "log", "yum.log")) > 0:
+        if not os.listdir(self.makeChrootPath("var", "cache", "yum")) == []:
             self.mounts.mountall()
 """
 
