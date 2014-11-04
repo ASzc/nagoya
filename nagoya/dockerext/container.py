@@ -137,9 +137,9 @@ class Container(object):
         return str(uuid.uuid4())
 
     def __init__(self, image, name=None, detach=True, entrypoint=None,
-                 run_once=False, working_dir=None, callbacks=None,
-                 commands=None, envs=None, links=None, volumes=None,
-                 volumes_from=None):
+                 run_once=False, working_dir=None, add_capabilities=None,
+                 drop_capabilities=None, callbacks=None, commands=None,
+                 envs=None, links=None, volumes=None, volumes_from=None):
 
         # For mutable defaults
         def mdef(candidate, default):
@@ -151,6 +151,8 @@ class Container(object):
         self.entrypoint = entrypoint
         self.run_once = run_once
         self.working_dir = working_dir
+        self.add_capabilities = mdef(callbacks, [])
+        self.drop_capabilities = mdef(commands, [])
         self.callbacks = mdef(callbacks, [])
         self.commands = mdef(commands, [])
         self.envs =  mdef(envs, [])
@@ -173,13 +175,17 @@ class Container(object):
                 lines = map(str.strip, d[key].split("\n"))
                 return [to_type.from_text(l) for l in lines]
             return makelist
+        def split_lines(key):
+            return d[key].split("\n")
 
         optionals = {"detach" : copy,
                      "entrypoint" : copy,
                      "run_once" : copy,
                      "working_dir" : copy,
+                     "add_capabilities" : split_lines,
+                     "drop_capabilities" : split_lines,
                      "callbacks" : plural_ft(Callspec),
-                     "commands" : lambda k: d[k].split("\n"),
+                     "commands" : split_lines,
                      "envs" : plural_ft(Env),
                      "links" : plural_ft(NetworkLink),
                      "volumes" : plural_ft(VolumeLink),
@@ -238,6 +244,8 @@ class Container(object):
             self._process_callbacks("pre", "start")
             logger.debug("Attempting to start container {0}".format(self))
             self.client.start(container=self.name,
+                              cap_add=self.add_capabilities,
+                              cap_drop=self.drop_capabilities,
                               binds=self.volumes_api_binds(),
                               links=self.links_api_formatted(),
                               volumes_from=self.volumes_from_api_formatted())
