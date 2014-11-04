@@ -151,8 +151,8 @@ class Container(object):
         self.entrypoint = entrypoint
         self.run_once = run_once
         self.working_dir = working_dir
-        self.add_capabilities = mdef(callbacks, [])
-        self.drop_capabilities = mdef(commands, [])
+        self.add_capabilities = mdef(add_capabilities, [])
+        self.drop_capabilities = mdef(drop_capabilities, [])
         self.callbacks = mdef(callbacks, [])
         self.commands = mdef(commands, [])
         self.envs =  mdef(envs, [])
