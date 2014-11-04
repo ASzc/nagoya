@@ -61,7 +61,7 @@ type_paths = {
 }
 """)
     mount_ins_index = lines.index("    def mount(self):\n")
-    lines.insert(dict_ins_index+3, """
+    lines.insert(mount_ins_index+3, """
         if self.filetype in type_paths:
             link_from = type_paths[self.filetype]
             mockbuild.util.rmtree(self.path)
@@ -69,8 +69,8 @@ type_paths = {
         self.mounted = True
         return True
 """)
-    mount_ins_index = lines.index("    def umount(self, force=False, nowarn=False):\n")
-    lines.insert(dict_ins_index+3, """
+    unmount_ins_index = lines.index("    def umount(self, force=False, nowarn=False):\n")
+    lines.insert(unmount_ins_index+3, """
         if self.filetype in type_paths:
             os.remove(self.path)
         self.mounted = False
