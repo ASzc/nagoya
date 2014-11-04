@@ -44,6 +44,14 @@ with cfg.mod_ini("/etc/kojid/kojid.conf") as i:
     i.kojid.smtphost = "koji"
     i.kojid.from_addr = "Koji Build System <buildsys@kojibuilder>"
 
+log.info("Modify mock to not mount vfs before yum is run")
+with cfg.mod_text("/usr/lib/python2.6/site-packages/mockbuild/buildroot.py") as lines:
+    i = lines.index("        self.mounts.mountall()\n")
+    lines[i] = """
+        if os.path.getsize(self.make_chroot_path("var", "log", "yum.log")) > 0:
+            self.mounts.mountall()
+"""
+
 #
 # Koji CLI
 #
