@@ -53,12 +53,11 @@ log.info("Modify mock to use Docker's system vfs mounts")
 with cfg.mod_text("/usr/lib/python2.6/site-packages/mockbuild/mounts.py") as lines:
     dict_ins_index = lines.index("class FileSystemMountPoint(MountPoint):\n")
     lines.insert(dict_ins_index-1, """
-type_paths = {
-    "proc" : "/proc"
-    "sysfs" : "/sys"
-    "tmpfs" : "/dev/shm"
-    "devpts" : "/dev/pts"
-}
+type_paths = dict()
+type_paths["proc"] = "/proc"
+type_paths["sysfs"] = "/sys"
+type_paths["tmpfs"] = "/dev/shm"
+type_paths["devpts"] = "/dev/pts"
 """)
     mount_ins_index = lines.index("    def mount(self):\n")
     lines.insert(mount_ins_index+3, """
