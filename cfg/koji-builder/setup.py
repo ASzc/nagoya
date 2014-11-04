@@ -44,38 +44,6 @@ with cfg.mod_ini("/etc/kojid/kojid.conf") as i:
     i.kojid.smtphost = "koji"
     i.kojid.from_addr = "Koji Build System <buildsys@kojibuilder>"
 
-log.info("Modify mock to not call unshare")
-with cfg.mod_text("/usr/lib/python2.6/site-packages/mockbuild/util.py") as lines:
-    i = lines.index("def unshare(flags):\n")
-    lines.insert(i+1, "    return\n")
-
-log.info("Modify mock to use Docker's system vfs mounts")
-with cfg.mod_text("/usr/lib/python2.6/site-packages/mockbuild/mounts.py") as lines:
-    dict_ins_index = lines.index("class FileSystemMountPoint(MountPoint):\n")
-    lines.insert(dict_ins_index-1, """
-type_paths = dict()
-type_paths["proc"] = "/proc"
-type_paths["sysfs"] = "/sys"
-type_paths["tmpfs"] = "/dev/shm"
-type_paths["devpts"] = "/dev/pts"
-""")
-    mount_ins_index = lines.index("    def mount(self):\n")
-    lines.insert(mount_ins_index+3, """
-        if self.filetype in type_paths:
-            link_from = type_paths[self.filetype]
-            mockbuild.util.rmtree(self.path)
-            os.symlink(link_from, self.path)
-        self.mounted = True
-        return True
-""")
-    unmount_ins_index = lines.index("    def umount(self, force=False, nowarn=False):\n")
-    lines.insert(unmount_ins_index+3, """
-        if self.filetype in type_paths:
-            os.remove(self.path)
-        self.mounted = False
-        return True
-""")
-
 #
 # Koji CLI
 #
